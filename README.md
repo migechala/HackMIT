@@ -6,6 +6,7 @@ Acreage Ag reference you shared, adapted to your platform's brand and data.
 ## Run locally
 
 ```bash
+cd front-end
 npm install
 npm run dev
 ```
