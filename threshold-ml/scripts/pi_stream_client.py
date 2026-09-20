@@ -34,7 +34,7 @@ def play_anti(anti, fs=4000, device=None):
         anti = np.repeat(anti, 2, axis=1)  # mono -> stereo for HDMI/USB that rejects mono
     elif max_ch > 2:
         anti = np.tile(anti, (1, max_ch))
-    sd.play(anti, samplerate=fs, blocking=True, device=device, channels=anti.shape[1])
+    sd.play(anti, samplerate=fs, blocking=True, device=device)
 
 def stream(server, fs, rate_hz):
     host, port = server.rsplit(':',1)
