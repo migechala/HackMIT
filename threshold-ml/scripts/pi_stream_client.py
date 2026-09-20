@@ -23,7 +23,11 @@ for i, d in enumerate(sd.query_devices()):
     if int(d["max_input_channels"]) > 0 and ("UAC" in d["name"] or "USB" in d["name"]):
         if MIC_REF is None: MIC_REF = i
         elif MIC_ERR is None and i != MIC_REF: MIC_ERR = i
-if MIC_REF is None: MIC_REF = sd.default.device[0]
+if MIC_REF is None:
+    for i, d in enumerate(sd.query_devices()):
+        if int(d["max_input_channels"]) > 0:
+            MIC_REF = i; break
+    else: MIC_REF = 0
 if MIC_ERR is None: MIC_ERR = MIC_REF
 MIC_RATE = 48000
 print(f"mics ref={MIC_REF} {sd.query_devices(MIC_REF)['name']} err={MIC_ERR} {sd.query_devices(MIC_ERR)['name']}")
