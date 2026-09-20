@@ -1,0 +1,39 @@
+# DEFERRED draft: Model A matching supervision is not implemented.
+# The audited trainer deliberately rejects this model rather than silently train MSE.
+experiment: multitone_param
+fs: 4000
+L_in: 2048
+H: 200
+sim:
+  n_tones: 3
+  duration_s: 6.0
+  freq_range: [40, 350]
+  amp_range: [0.3, 0.9]
+  snr_db_range: [8, 25]
+  drift_range: [-1.0, 1.0]
+  use_harmonics: true
+  broadband_noise_std: 0.06
+  ref_noise_std: 0.03
+  err_noise_std: 0.03
+  secondary_delay_ms_range: [6, 20]
+dataset:
+  train_scenes: 600
+  val_scenes: 100
+  test_scenes: 100
+  windows_per_scene: 8
+  train_seed: 10
+  val_seed: 11
+  test_seed: 12
+training:
+  batch_size: 64
+  epochs: 30
+  lr: 0.001
+  weight_decay: 0.0001
+model:
+  name: model_a_params
+  n_tones_max: 3
+  hidden: 128
+loss:
+  w_td: 1.0
+  w_stft: 0.5
+  w_residual: 1.0
