@@ -65,12 +65,23 @@ _rec_ref=None; _rec_err=None
 def get_recs():
     global _rec_ref,_rec_err
     if _rec_ref is None:
-        _rec_ref=sd.InputStream(device=MIC_REF, channels=1, samplerate=MIC_RATE, dtype="float32", callback=cb_ref, blocksize=480)
-        _rec_ref.start()
+        ch = int(sd.query_devices(MIC_REF)['max_input_channels'])
+        ch = 1 if ch >= 1 else 1
+        # many USB mics only support stereo (2ch), open with native then take ch 0
+        try:
+            _rec_ref=sd.InputStream(device=MIC_REF, channels=1, samplerate=MIC_RATE, dtype="float32", callback=cb_ref, blocksize=480)
+            _rec_ref.start()
+        except Exception:
+            _rec_ref=sd.InputStream(device=MIC_REF, channels=2, samplerate=MIC_RATE, dtype="float32", callback=cb_ref, blocksize=480)
+            _rec_ref.start()
     if MIC_ERR==MIC_REF: _rec_err=_rec_ref
     elif _rec_err is None:
-        _rec_err=sd.InputStream(device=MIC_ERR, channels=1, samplerate=MIC_RATE, dtype="float32", callback=cb_err, blocksize=480)
-        _rec_err.start()
+        try:
+            _rec_err=sd.InputStream(device=MIC_ERR, channels=1, samplerate=MIC_RATE, dtype="float32", callback=cb_err, blocksize=480)
+            _rec_err.start()
+        except Exception:
+            _rec_err=sd.InputStream(device=MIC_ERR, channels=2, samplerate=MIC_RATE, dtype="float32", callback=cb_err, blocksize=480)
+            _rec_err.start()
     time.sleep(0.2)
     return _rec_ref,_rec_err
 
