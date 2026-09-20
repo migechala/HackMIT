@@ -64,6 +64,9 @@ function readBody(req, limit = 4096) {
   });
 }
 
+// Deepgram answers 401 (and 400 on the token endpoint) when the key is not valid.
+const badKey = (status) => (status === 401 || status === 400 ? 'Deepgram rejected the API key. Check DEEPGRAM_API_KEY in .env (use the key secret, not the key ID, from console.deepgram.com).' : '');
+
 async function handleApi(req, res, path) {
   if (!sameOrigin(req)) return json(res, 403, { error: 'cross-origin request refused' });
   if (path === '/api/voice-status' && req.method === 'GET') return json(res, 200, { enabled: !!currentKey(), ttsModel: TTS_MODEL });
@@ -76,7 +79,7 @@ async function handleApi(req, res, path) {
       headers: { Authorization: `Token ${KEY}`, 'content-type': 'application/json' },
       body: JSON.stringify({ ttl_seconds: 60 }),
     });
-    if (!r.ok) return json(res, 502, { error: `Deepgram token request failed (${r.status})` });
+    if (!r.ok) return json(res, 502, { error: badKey(r.status) || `Deepgram token request failed (${r.status})` });
     const d = await r.json();
     return json(res, 200, { access_token: d.access_token, expires_in: d.expires_in });
   }
@@ -91,7 +94,7 @@ async function handleApi(req, res, path) {
       headers: { Authorization: `Token ${KEY}`, 'content-type': 'application/json' },
       body: JSON.stringify({ text }),
     });
-    if (!r.ok) return json(res, 502, { error: `Deepgram speech request failed (${r.status})` });
+    if (!r.ok) return json(res, 502, { error: badKey(r.status) || `Deepgram speech request failed (${r.status})` });
     res.writeHead(200, { 'content-type': r.headers.get('content-type') || 'audio/mpeg', 'cache-control': 'no-store' });
     res.end(Buffer.from(await r.arrayBuffer()));
     return;
