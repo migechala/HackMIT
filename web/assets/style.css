@@ -199,3 +199,17 @@
   .pricing-grid.solo .price-card .price{font-size:56px;margin:30px 0 10px}
 }
 .pricing-grid.solo{max-width:none;margin-left:0;margin-right:0}
+
+/* Exceedance alarm banner (assets/alarm.js) */
+#alarm-banner{position:fixed;top:88px;left:50%;transform:translateX(-50%);z-index:80;width:min(640px,calc(100vw - 24px));display:flex;align-items:center;gap:14px;padding:14px 16px 14px 18px;border-radius:18px;background:#8c1d18;color:#fff;box-shadow:0 22px 50px -18px rgba(90,15,10,.7);border:1px solid rgba(255,255,255,.25)}
+#alarm-banner.ok{background:#1d4732}
+.alarm-dot{flex:0 0 12px;height:12px;border-radius:50%;background:#ffd2cd}
+#alarm-banner.ok .alarm-dot{background:#c2dba3}
+.alarm-text{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;font-size:13px;line-height:1.4}
+.alarm-text strong{font:700 15px Manrope,sans-serif;letter-spacing:-.3px}
+.alarm-note{font-size:11px;opacity:.85}
+.alarm-note:empty{display:none}
+.alarm-btn{flex:0 0 auto;min-height:40px;padding:0 18px;border-radius:999px;border:1px solid rgba(255,255,255,.5);background:rgba(255,255,255,.14);color:#fff;font:600 13px 'DM Sans',sans-serif;cursor:pointer}
+.alarm-btn:disabled{opacity:.6;cursor:default}
+@media(prefers-reduced-motion:no-preference){#alarm-banner:not(.ok) .alarm-dot{animation:alarmpulse 1s ease-in-out infinite}@keyframes alarmpulse{50%{transform:scale(1.6);opacity:.5}}}
+@media(max-width:600px){#alarm-banner{top:76px;padding:12px 12px 12px 14px}}
