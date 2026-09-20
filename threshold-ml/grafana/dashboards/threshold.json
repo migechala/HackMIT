@@ -1,0 +1,9 @@
+{
+  "title": "THRESHOLD — dB Minimized & Nature Freed",
+  "panels": [
+    {"type": "timeseries", "title": "Attenuation dB (higher = quieter)", "targets": [{"expr": "threshold_attenuation_db{method=\"ml\"}"}, {"expr": "threshold_attenuation_db{method=\"sinusoid\"}"}, {"expr": "threshold_attenuation_db{method=\"perfect_forecast\"}"}]},
+    {"type": "stat", "title": "Nature Freed (m²) — radius 2.5m/dB", "targets": [{"expr": "3.14159 * (2.5 * threshold_attenuation_db{method=\"ml\"})^2"}]},
+    {"type": "barchart", "title": "Amplification Count (windows louder)", "targets": [{"expr": "threshold_amplification_count"}]},
+    {"type": "stat", "title": "Half-hour Data (frames)", "targets": [{"expr": "threshold_real_frames"}]}
+  ]
+}
