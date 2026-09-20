@@ -5,7 +5,7 @@ services:
     ports: ["5000:5000"]
     volumes:
       - ./data/rack-A1:/app/data/real
-      - ./artifacts/rack-A1:/app/artifacts
+      - ./artifacts:/app/artifacts
       - ./data/secondary_ir.npz:/app/data/secondary_ir.npz:ro
     devices:
       - /dev/snd
@@ -15,12 +15,12 @@ services:
     ports: ["5001:5000"]
     volumes:
       - ./data/rack-B2:/app/data/real
-      - ./artifacts/rack-B2:/app/artifacts
+      - ./artifacts:/app/artifacts
       - ./data/secondary_ir.npz:/app/data/secondary_ir.npz:ro
   # per-rack auto-retrain — runs alongside ingest, hot-reloads new model
   retrain-rack-A1:
     image: threshold-ml:gx10
     volumes:
       - ./data/rack-A1:/app/data/real
-      - ./artifacts/rack-A1:/app/artifacts
+      - ./artifacts:/app/artifacts
     command: python scripts/auto_retrain_halfhour.py
