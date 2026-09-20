@@ -20,6 +20,18 @@ def play_anti(anti, fs=4000, device=None):
                 device=i; break
         else:
             device=None
+    info = sd.query_devices(device) if device is not None else sd.query_devices(kind='output')
+    dev_fs = int(info['default_samplerate']) or 48000
+    # resample 4000 -> device rate (USB DACs reject 4000 Hz)
+    if dev_fs != fs:
+        from scipy.signal import resample_poly
+        # 4000 -> 48000 is 12x
+        anti = resample_poly(anti, dev_fs, fs).astype(np.float32)
+        fs = dev_fs
+    # ensure correct channels (mono)
+    max_ch = int(info['max_output_channels'])
+    if max_ch >= 1:
+        anti = np.asarray(anti, dtype=np.float32).reshape(-1, 1)
     sd.play(anti, samplerate=fs, blocking=True, device=device)
 
 def stream(server, fs, rate_hz):
