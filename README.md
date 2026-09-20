@@ -273,7 +273,7 @@ A floating "Ask THRESHOLD" assistant on the logged-in pages. Speak or type a que
 Run:
 
 ```bash
-cp .env.example .env        # then set DEEPGRAM_API_KEY (get one at https://console.deepgram.com/signup)
+# .env is created for you: paste your key after DEEPGRAM_API_KEY= (no restart needed). Otherwise: cp .env.example .env, then set DEEPGRAM_API_KEY (get one at https://console.deepgram.com/signup)
 node server/serve.mjs       # http://localhost:4200
 ```
 

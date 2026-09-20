@@ -204,7 +204,7 @@ function toggle(force) {
   open = typeof force === 'boolean' ? force : !open;
   panel.hidden = !open;
   fab.setAttribute('aria-expanded', String(open));
-  if (open) { if (!statusChecked) refreshVoice(); setTimeout(() => input.focus(), 30); }
+  if (open) { if (!statusChecked || !enabled) refreshVoice(); setTimeout(() => input.focus(), 30); }
   else { stopListening(false); if (audio) audio.pause(); fab.focus(); }
 }
 

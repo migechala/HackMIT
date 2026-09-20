@@ -30,7 +30,7 @@ function loadKey() {
   }
   return '';
 }
-const KEY = loadKey();
+const currentKey = () => loadKey(); // re-read on every request, so pasting the key into .env needs no restart
 
 const MIME = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
@@ -66,7 +66,8 @@ function readBody(req, limit = 4096) {
 
 async function handleApi(req, res, path) {
   if (!sameOrigin(req)) return json(res, 403, { error: 'cross-origin request refused' });
-  if (path === '/api/voice-status' && req.method === 'GET') return json(res, 200, { enabled: !!KEY, ttsModel: TTS_MODEL });
+  if (path === '/api/voice-status' && req.method === 'GET') return json(res, 200, { enabled: !!currentKey(), ttsModel: TTS_MODEL });
+  const KEY = currentKey();
   if (!KEY) return json(res, 503, { error: 'DEEPGRAM_API_KEY is not set on the server' });
 
   if (path === '/api/voice-token' && req.method === 'POST') {
@@ -130,5 +131,5 @@ createServer(async (req, res) => {
   }
 }).listen(PORT, () => {
   console.log(`THRESHOLD on http://localhost:${PORT}`);
-  console.log(KEY ? 'Deepgram voice: enabled' : 'Deepgram voice: disabled (set DEEPGRAM_API_KEY or add it to .env)');
+  console.log(currentKey() ? 'Deepgram voice: enabled' : 'Deepgram voice: disabled (set DEEPGRAM_API_KEY or add it to .env)');
 });
