@@ -1,0 +1,26 @@
+services:
+  rack-A1:
+    build: .
+    image: threshold-ml:gx10
+    ports: ["5000:5000"]
+    volumes:
+      - ./data/rack-A1:/app/data/real
+      - ./artifacts:/app/artifacts
+      - ./data/secondary_ir.npz:/app/data/secondary_ir.npz:ro
+    devices:
+      - /dev/snd
+    command: python scripts/ingest_raw_server.py --bind 0.0.0.0:5000 --out data/real --config configs/drift.yaml --checkpoint artifacts/checkpoints/drift2_h128/drift2_h128_best.pt
+  rack-B2:
+    extends: rack-A1
+    ports: ["5001:5000"]
+    volumes:
+      - ./data/rack-B2:/app/data/real
+      - ./artifacts:/app/artifacts
+      - ./data/secondary_ir.npz:/app/data/secondary_ir.npz:ro
+  # per-rack auto-retrain — runs alongside ingest, hot-reloads new model
+  retrain-rack-A1:
+    image: threshold-ml:gx10
+    volumes:
+      - ./data/rack-A1:/app/data/real
+      - ./artifacts:/app/artifacts
+    command: python scripts/auto_retrain_halfhour.py
