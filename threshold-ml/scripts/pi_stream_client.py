@@ -12,11 +12,10 @@ def fake_sensor(L=2048, M=3):
     speaker = np.zeros(L+len(ir)-1, dtype=np.float32)
     return ref, err, speaker, ir
 
-def play_anti(anti, fs=4000):
+def play_anti(anti, fs=4000, device=4):
     try:
         import sounddevice as sd
-        # blocking play keeps 50 ms cadence; use same fs as model
-        sd.play(anti, samplerate=fs, blocking=True)
+        sd.play(anti, samplerate=fs, blocking=True, device=device)
     except Exception as e:
         # fallback: write raw to ALSA pipe (Pi with aplay)
         try:
@@ -55,7 +54,7 @@ def stream(server, fs, rate_hz):
                     raise ConnectionError('server closed')
                 payload += chunk
             anti = np.frombuffer(payload, dtype='<f4').copy()
-            play_anti(anti, fs=fs)
+            play_anti(anti, fs=fs, device=args.device)
             if sample_index % (2048*20) == 0:
                 print(f'got anti {H} samples, max {np.max(np.abs(anti)):.3f}')
             sample_index += len(ref)
@@ -69,6 +68,7 @@ if __name__ == '__main__':
     ap = argparse.ArgumentParser()
     ap.add_argument('--server', default='192.168.10.1:5000')
     ap.add_argument('--fs', type=int, default=4000)
+    ap.add_argument('--device', type=int, default=4, help='ALSA device index for USB DAC (plughw:4,0)')
     ap.add_argument('--rate-hz', type=float, default=20)
     args = ap.parse_args()
     stream(args.server, args.fs, args.rate_hz)
