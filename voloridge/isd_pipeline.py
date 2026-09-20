@@ -44,6 +44,7 @@ GOOD_Q = set("01459")
 ROOT = Path(__file__).resolve().parent
 CACHE = ROOT / "data"
 OUT = ROOT.parent / "front-end" / "src" / "threshold" / "dashboard" / "lib" / "isdSummary.json"
+WEB = ROOT.parent / "web" / "assets"  # standalone site: JSON plus a script wrapper so index.html works from disk
 
 # The four facilities in the dashboard (front-end/src/threshold/dashboard/lib/mockData.ts).
 SITES = [
@@ -246,6 +247,9 @@ def main():
     }
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(out, indent=1), encoding="utf-8")
+    WEB.mkdir(parents=True, exist_ok=True)
+    (WEB / "isd-summary.json").write_text(json.dumps(out, indent=1), encoding="utf-8")
+    (WEB / "isd-data.js").write_text("window.THRESHOLD_ISD = " + json.dumps(out, separators=(",", ":")) + ";\n", encoding="utf-8")
     print(f"wrote {OUT} ({OUT.stat().st_size / 1024:.1f} KB)")
 
 

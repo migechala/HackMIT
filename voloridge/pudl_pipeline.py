@@ -38,6 +38,7 @@ CARBON_FREE = ("nuclear", "hydro", "wind", "solar")
 ROOT = Path(__file__).resolve().parent
 CACHE = ROOT / "data" / "pudl"
 OUT = ROOT.parent / "front-end" / "src" / "threshold" / "dashboard" / "lib" / "pudlSummary.json"
+WEB = ROOT.parent / "web" / "assets"  # standalone site: JSON plus a script wrapper so index.html works from disk
 
 SITES = [
     {"id": "dc-manassas-01", "city": "Manassas", "state": "VA"},
@@ -145,6 +146,9 @@ def main():
         "sites": sites,
     }
     OUT.write_text(json.dumps(out, indent=1), encoding="utf-8")
+    WEB.mkdir(parents=True, exist_ok=True)
+    (WEB / "pudl-summary.json").write_text(json.dumps(out, indent=1), encoding="utf-8")
+    (WEB / "pudl-data.js").write_text("window.THRESHOLD_PUDL = " + json.dumps(out, separators=(",", ":")) + ";\n", encoding="utf-8")
     print(f"wrote {OUT} ({OUT.stat().st_size / 1024:.1f} KB)")
 
 
