@@ -137,8 +137,11 @@ def stream(server, fs, rate_hz):
                         raise ConnectionError("server closed")
                     payload += chunk
                 anti = np.frombuffer(payload, dtype="<f4").copy()
-                if sample_index % (2048 * 20) == 0:
-                    print(f"mic rms {np.std(ref):.3f} -> anti max {np.max(np.abs(anti)):.3f}")
+                rms = float(np.std(ref))
+                if rms < 0.005:
+                    anti = np.zeros_like(anti)
+                if sample_index % (2048 * 5) == 0:
+                    print(f"mic rms {rms:.4f} -> anti max {np.max(np.abs(anti)):.3f} {'[GATED]' if rms < 0.005 else ''}")
                 play_anti(anti, fs=fs)
                 sample_index += len(ref)
                 sleep = interval - (time.time() - start)
