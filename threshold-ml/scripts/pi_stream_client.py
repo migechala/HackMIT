@@ -11,10 +11,21 @@ from scipy.signal import resample_poly
 
 from threshold_ml.ingest.raw_protocol import pack_frame
 
-# Pi's working DAC from `aplay -l`: card 4 UACDemoV10
 ALSA_DEVICE = "plughw:4,0"
-ALSA_RATE = 48000  # USB DACs reject 4000 Hz; resample
-ALSA_CHANNELS = 2  # card 4 reports max_output_channels=2, mono fails with -9998
+ALSA_RATE = 48000
+ALSA_CHANNELS = 2
+
+# persistent aplay — no per-chunk restart gaps/static
+_aplay = None
+
+def get_aplay():
+    global _aplay
+    if _aplay is None or _aplay.poll() is not None:
+        _aplay = subprocess.Popen(
+            ["aplay", "-D", ALSA_DEVICE, "-f", "FLOAT_LE", "-r", str(ALSA_RATE), "-c", str(ALSA_CHANNELS), "-q"],
+            stdin=subprocess.PIPE,
+        )
+    return _aplay
 
 
 def fake_sensor(L=2048, M=3):
@@ -31,17 +42,18 @@ def play_anti(anti, fs=4000, gain=2.5):
     anti = np.clip(anti, -0.99, 0.99)
     if fs != ALSA_RATE:
         anti = resample_poly(anti, ALSA_RATE, fs).astype(np.float32)
-    anti = np.asarray(anti, dtype=np.float32).reshape(-1, 1)
-    if ALSA_CHANNELS == 2 and anti.shape[1] == 1:
-        anti = np.repeat(anti, 2, axis=1)
-    # interleave to bytes: FLOAT_LE, 2 channels
+    anti = anti.reshape(-1, 1)
+    anti = np.repeat(anti, ALSA_CHANNELS, axis=1)
     data = anti.astype("<f4").tobytes()
-    # blocking aplay — same path as `speaker-test -D plughw:4,0` which you confirmed beeps
-    proc = subprocess.Popen(
-        ["aplay", "-D", ALSA_DEVICE, "-f", "FLOAT_LE", "-r", str(ALSA_RATE), "-c", str(ALSA_CHANNELS), "-q"],
-        stdin=subprocess.PIPE,
-    )
-    proc.communicate(data)
+    try:
+        get_aplay().stdin.write(data)
+        get_aplay().stdin.flush()
+    except BrokenPipeError:
+        # aplay died, restart
+        global _aplay
+        _aplay = None
+        get_aplay().stdin.write(data)
+        get_aplay().stdin.flush()
 
 
 def stream(server, fs, rate_hz):
@@ -80,6 +92,11 @@ def stream(server, fs, rate_hz):
                 time.sleep(sleep)
     finally:
         s.close()
+        if _aplay:
+            try:
+                _aplay.stdin.close()
+            except Exception:
+                pass
 
 
 if __name__ == "__main__":
