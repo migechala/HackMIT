@@ -74,10 +74,16 @@ def get_aplay():
     return _aplay
 
 _speaker_hist = None
+_MEASURED_IR = None
+try:
+    _MEASURED_IR = np.load("data/secondary_ir.npz")["ir"].astype(np.float32)
+    print(f"loaded measured ir {len(_MEASURED_IR)} taps")
+except Exception:
+    pass
 
 def real_sensor(L=2048, M=3):
     global _speaker_hist
-    ir = np.array([0, 0, 0.6], dtype=np.float32)
+    ir = _MEASURED_IR if _MEASURED_IR is not None else np.array([0, 0, 0.6], dtype=np.float32)
     # latest 512 ms from ring, no blocking 512ms read
     needed_raw = int(L * MIC_RATE / 4000)
     with _ring_lock:
