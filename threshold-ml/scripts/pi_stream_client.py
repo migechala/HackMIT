@@ -12,10 +12,20 @@ def fake_sensor(L=2048, M=3):
     speaker = np.zeros(L+len(ir)-1, dtype=np.float32)
     return ref, err, speaker, ir
 
-def play_anti(anti):
-    # TODO: replace with ALSA/DAQ write
-    # e.g. speaker_handle.write(anti)
-    pass
+def play_anti(anti, fs=4000):
+    try:
+        import sounddevice as sd
+        # blocking play keeps 50 ms cadence; use same fs as model
+        sd.play(anti, samplerate=fs, blocking=True)
+    except Exception as e:
+        # fallback: write raw to ALSA pipe (Pi with aplay)
+        try:
+            import subprocess, tempfile
+            with tempfile.NamedTemporaryFile(suffix='.raw') as f:
+                anti.astype('<f4').tofile(f.name)
+                subprocess.run(['aplay', '-f', 'FLOAT_LE', '-r', str(fs), '-c', '1', f.name], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except Exception:
+            print(f'play failed: {e}')
 
 def stream(server, fs, rate_hz):
     host, port = server.rsplit(':',1)
@@ -45,7 +55,7 @@ def stream(server, fs, rate_hz):
                     raise ConnectionError('server closed')
                 payload += chunk
             anti = np.frombuffer(payload, dtype='<f4').copy()
-            play_anti(anti)
+            play_anti(anti, fs=fs)
             if sample_index % (2048*20) == 0:
                 print(f'got anti {H} samples, max {np.max(np.abs(anti)):.3f}')
             sample_index += len(ref)
