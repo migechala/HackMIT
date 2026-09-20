@@ -5,7 +5,7 @@
  * Every effect is CSS-gated to real hover pointers and switched off under prefers-reduced-motion (see style.css). */
 (() => {
 'use strict';
-const SEL = '.navlinks a, .navright > a, .btn, #footer a';
+const SEL = '.navlinks a, .navright > a, .btn, .pill-btn, #footer a';
 const SKIP = '.switch, .menu-btn, [data-metric], [aria-hidden="true"]';
 
 function wrap(el) {

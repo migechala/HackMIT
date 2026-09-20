@@ -82,3 +82,40 @@
 
 .data-band .eyebrow{margin-bottom:24px}
 #grid-mix{grid-template-columns:1fr}
+
+/* Facilities list */
+.fac-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+.fac-card{text-align:left;padding:26px;display:flex;flex-direction:column;gap:20px;cursor:pointer;font:inherit;color:inherit;transition:transform .3s var(--ease),border-color .2s}
+.fac-top{display:flex;justify-content:space-between;align-items:flex-start;gap:14px}
+.fac-top h3{font-family:Manrope;font-size:21px;letter-spacing:-.6px}
+.fac-top p{font-size:12px;color:var(--muted);margin-top:5px}
+.fac-top .fac-op{font-size:11px;margin-top:2px}
+.fac-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.fac-stats label{display:block;font-size:11px;color:var(--muted);margin-bottom:4px}
+.fac-stats strong{font-size:17px;font-family:Manrope}
+.fac-real{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:11px;color:var(--muted);border-top:1px solid #dfe7d8;padding-top:14px}
+.fac-note{background:#f6e6e1;border:1px solid #e2bbb1;color:#8a2f26;border-radius:6px;padding:9px 12px;font-size:11px}
+.fac-open{margin-top:auto;font-size:12px;font-weight:600;color:var(--forest)}
+.fac-card.selected{border-color:var(--pine);box-shadow:0 0 0 1px var(--pine)}
+@media(hover:hover) and (pointer:fine){.fac-card:hover{transform:translateY(-3px);border-color:var(--pine)}}
+.back-link{color:var(--forest);font-weight:600;margin-right:14px}
+@media(max-width:850px){.fac-grid{grid-template-columns:1fr}}
+
+/* Pricing: two plans */
+.pricing-grid{grid-template-columns:repeat(2,1fr);max-width:920px}
+@media(max-width:850px){.pricing-grid{grid-template-columns:1fr}}
+
+/* Public nav: floating pill */
+#header.pill{background:transparent;border-bottom:0;-webkit-backdrop-filter:none;backdrop-filter:none;padding:10px 20px;height:76px}
+.pill-nav{height:56px;max-width:1040px;margin:0 auto;padding:0 8px 0 22px;border-radius:999px;background:rgba(250,251,245,.92);border:1px solid rgba(20,34,25,.1);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+.pill-brand{font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;letter-spacing:.22em;gap:10px}
+.pill-brand svg{width:20px;height:20px}
+.pill-nav .navlinks{gap:6px}
+.pill-nav .navlinks a{padding:8px 14px;border-radius:999px;font-size:14px}
+.pill-nav .navlinks a.active:after{display:none}
+.pill-nav .navlinks a.active,.pill-nav .navlinks a:hover{color:var(--forest);background:rgba(16,42,29,.06)}
+.pill-btn{display:inline-flex;align-items:center;gap:12px;padding:5px 5px 5px 20px;border-radius:999px;background:var(--forest);color:#f6f8ed;font-size:14px;font-weight:600;transition:transform .2s var(--ease),background .2s}
+.pill-btn:active{transform:scale(.97)}
+.pill-btn .pill-circle{width:34px;height:34px;border-radius:50%;background:rgba(250,251,245,.15);display:grid;place-items:center;font-size:14px}
+@media(max-width:850px){#header.pill{padding:8px 12px;height:65px}.pill-nav{height:50px;padding:0 6px 0 16px}}
+.pricing-grid{margin-left:auto;margin-right:auto}
