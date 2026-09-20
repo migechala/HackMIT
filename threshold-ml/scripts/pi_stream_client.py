@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Pi raw TCP client — real USB mic with low-latency ring buffer, no 512ms block."""
+"""Pi raw TCP client — dual USB mics (ref near source, err in zone) + speaker."""
 import argparse
 import socket
 import struct
@@ -21,48 +21,82 @@ _aplay = None
 _prev_tail = None
 FADE = 960
 
-# mic ring buffer — continuous capture, no per-frame 512ms wait
-MIC_DEVICE = None
+# dual mics — pick two distinct input devices with UAC/USB, fallback to one duplicated
+def pick_mics():
+    inputs = [(i, d) for i, d in enumerate(sd.query_devices()) if int(d["max_input_channels"]) > 0]
+    uacs = [(i, d) for i, d in inputs if "UAC" in d["name"] or "USB" in d["name"]]
+    pool = uacs if len(uacs) >= 2 else inputs
+    if len(pool) >= 2:
+        return pool[0][0], pool[1][0]
+    if len(pool) == 1:
+        return pool[0][0], pool[0][0]
+    return sd.default.device[0], sd.default.device[0]
+
+MIC_REF, MIC_ERR = pick_mics()
 MIC_RATE = 48000
-for i, d in enumerate(sd.query_devices()):
-    if int(d["max_input_channels"]) > 0 and ("UAC" in d["name"] or "USB" in d["name"]):
-        MIC_DEVICE = i
-        break
-if MIC_DEVICE is None:
-    MIC_DEVICE = sd.default.device[0]
 
-_ring = np.zeros(int(MIC_RATE * 1), dtype=np.float32)  # 1s ring
-_ring_pos = 0
-_ring_lock = threading.Lock()
+print(f"mics ref={MIC_REF} {sd.query_devices(MIC_REF)['name']} err={MIC_ERR} {sd.query_devices(MIC_ERR)['name']}")
 
-def mic_callback(indata, frames, time_info, status):
-    global _ring_pos
+_ring_ref = np.zeros(int(MIC_RATE * 1), dtype=np.float32)
+_ring_err = np.zeros(int(MIC_RATE * 1), dtype=np.float32)
+_pos_ref = 0
+_pos_err = 0
+_lock_ref = threading.Lock()
+_lock_err = threading.Lock()
+
+def cb_ref(indata, frames, time_info, status):
+    global _pos_ref
     if status:
-        print(status)
+        print(f"ref {status}")
     mono = indata[:, 0].astype(np.float32)
-    with _ring_lock:
+    with _lock_ref:
         n = len(mono)
-        if n >= len(_ring):
-            _ring[:] = mono[-len(_ring):]
-            _ring_pos = 0
+        if n >= len(_ring_ref):
+            _ring_ref[:] = mono[-len(_ring_ref) :]
+            _pos_ref = 0
         else:
-            end = _ring_pos + n
-            if end <= len(_ring):
-                _ring[_ring_pos:end] = mono
+            end = _pos_ref + n
+            if end <= len(_ring_ref):
+                _ring_ref[_pos_ref:end] = mono
             else:
-                _ring[_ring_pos:] = mono[: len(_ring) - _ring_pos]
-                _ring[: end - len(_ring)] = mono[len(_ring) - _ring_pos :]
-            _ring_pos = end % len(_ring)
+                _ring_ref[_pos_ref :] = mono[: len(_ring_ref) - _pos_ref]
+                _ring_ref[: end - len(_ring_ref)] = mono[len(_ring_ref) - _pos_ref :]
+            _pos_ref = end % len(_ring_ref)
 
-_rec_stream = None
+def cb_err(indata, frames, time_info, status):
+    global _pos_err
+    if status:
+        print(f"err {status}")
+    mono = indata[:, 0].astype(np.float32)
+    with _lock_err:
+        n = len(mono)
+        if n >= len(_ring_err):
+            _ring_err[:] = mono[-len(_ring_err) :]
+            _pos_err = 0
+        else:
+            end = _pos_err + n
+            if end <= len(_ring_err):
+                _ring_err[_pos_err:end] = mono
+            else:
+                _ring_err[_pos_err :] = mono[: len(_ring_err) - _pos_err]
+                _ring_err[: end - len(_ring_err)] = mono[len(_ring_err) - _pos_err :]
+            _pos_err = end % len(_ring_err)
 
-def get_rec():
-    global _rec_stream
-    if _rec_stream is None:
-        _rec_stream = sd.InputStream(device=MIC_DEVICE, channels=1, samplerate=MIC_RATE, dtype="float32", callback=mic_callback, blocksize=480)
-        _rec_stream.start()
-        time.sleep(0.2)
-    return _rec_stream
+_rec_ref = None
+_rec_err = None
+
+def get_recs():
+    global _rec_ref, _rec_err
+    if _rec_ref is None:
+        _rec_ref = sd.InputStream(device=MIC_REF, channels=1, samplerate=MIC_RATE, dtype="float32", callback=cb_ref, blocksize=480)
+        _rec_ref.start()
+    if MIC_ERR == MIC_REF:
+        _rec_err = _rec_ref
+    elif _rec_err is None:
+        _rec_err = sd.InputStream(device=MIC_ERR, channels=1, samplerate=MIC_RATE, dtype="float32", callback=cb_err, blocksize=480)
+        _rec_err.start()
+    time.sleep(0.2)
+    return _rec_ref, _rec_err
 
 def get_aplay():
     global _aplay
@@ -74,48 +108,54 @@ def get_aplay():
     return _aplay
 
 _speaker_hist = None
-_MEASURED_IR = None
 try:
     _MEASURED_IR = np.load("data/secondary_ir.npz")["ir"].astype(np.float32)
     print(f"loaded measured ir {len(_MEASURED_IR)} taps")
 except Exception:
-    pass
+    _MEASURED_IR = np.array([0, 0, 0.6], dtype=np.float32)
 
 def real_sensor(L=2048, M=3):
     global _speaker_hist
-    ir = _MEASURED_IR if _MEASURED_IR is not None else np.array([0, 0, 0.6], dtype=np.float32)
-    # latest 512 ms from ring, no blocking 512ms read
-    needed_raw = int(L * MIC_RATE / 4000)
-    with _ring_lock:
-        if _ring_pos >= needed_raw:
-            mono = _ring[_ring_pos - needed_raw : _ring_pos].copy()
+    ir = _MEASURED_IR
+    needed = int(L * MIC_RATE / 4000)
+    with _lock_ref:
+        if _pos_ref >= needed:
+            mono_ref = _ring_ref[_pos_ref - needed : _pos_ref].copy()
         else:
-            mono = np.concatenate([_ring[-(needed_raw - _ring_pos) :], _ring[:_ring_pos]])
-    ref = resample_poly(mono, 4000, MIC_RATE).astype(np.float32)[:L]
+            mono_ref = np.concatenate([_ring_ref[-(needed - _pos_ref) :], _ring_ref[:_pos_ref]])
+    if MIC_ERR == MIC_REF:
+        mono_err = mono_ref.copy()
+    else:
+        with _lock_err:
+            if _pos_err >= needed:
+                mono_err = _ring_err[_pos_err - needed : _pos_err].copy()
+            else:
+                mono_err = np.concatenate([_ring_err[-(needed - _pos_err) :], _ring_err[:_pos_err]])
+    ref = resample_poly(mono_ref, 4000, MIC_RATE).astype(np.float32)[:L]
+    err = resample_poly(mono_err, 4000, MIC_RATE).astype(np.float32)[:L]
     if len(ref) < L:
         ref = np.pad(ref, (0, L - len(ref)))
-    err = ref.copy()
+    if len(err) < L:
+        err = np.pad(err, (0, L - len(err)))
     if _speaker_hist is None:
         _speaker_hist = np.zeros(L + len(ir) - 1, dtype=np.float32)
-    speaker = _speaker_hist.copy()
-    return ref, err, speaker, ir
+    return ref, err, _speaker_hist.copy(), ir
 
-def check_mic(seconds=0.5):
-    time.sleep(seconds)
-    with _ring_lock:
-        buf = _ring.copy()
-    rms = float(np.sqrt(np.mean(buf.astype(np.float64) ** 2)))
-    db = 20 * np.log10(rms + 1e-9)
-    print(f"mic check dev {MIC_DEVICE} {sd.query_devices(MIC_DEVICE)['name']}: rms {rms:.4f} ({db:.1f} dBFS) — {'OK' if rms > 0.005 else 'WARNING: silent'}")
-    return rms
+def check_mics():
+    time.sleep(0.5)
+    with _lock_ref:
+        rms_ref = float(np.sqrt(np.mean(_ring_ref.astype(np.float64) ** 2)))
+    with _lock_err:
+        rms_err = float(np.sqrt(np.mean(_ring_err.astype(np.float64) ** 2)))
+    print(f"mic ref rms {rms_ref:.4f} ({20*np.log10(rms_ref+1e-9):.1f} dB) err rms {rms_err:.4f} ({20*np.log10(rms_err+1e-9):.1f} dB) — {'OK' if min(rms_ref,rms_err)>0.005 else 'WARNING: one silent'}")
+    return rms_ref, rms_err
 
 def play_anti(anti, fs=4000, gain=2.5):
     global _prev_tail, _speaker_hist
     anti = np.asarray(anti, dtype=np.float32) * float(gain)
     anti = np.clip(anti, -0.99, 0.99)
     if _speaker_hist is not None:
-        new_hist = np.concatenate([_speaker_hist[len(anti) :], anti]) if len(_speaker_hist) > len(anti) else anti[-len(_speaker_hist) :]
-        _speaker_hist = new_hist.astype(np.float32)
+        _speaker_hist = np.concatenate([_speaker_hist[len(anti) :], anti]) if len(_speaker_hist) > len(anti) else anti[-len(_speaker_hist) :].astype(np.float32)
     if fs != ALSA_RATE:
         anti = resample_poly(anti, ALSA_RATE, fs).astype(np.float32)
     anti = anti.reshape(-1, 1)
@@ -139,9 +179,9 @@ def stream(server, fs, rate_hz):
     host, port = server.rsplit(":", 1)
     s = socket.create_connection((host, int(port)))
     s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-    print(f"connected to {server} mic dev {MIC_DEVICE} -> {sd.query_devices(MIC_DEVICE)['name']}")
-    get_rec()
-    check_mic()
+    print(f"connected to {server}")
+    get_recs()
+    check_mics()
     sample_index = 0
     interval = 1 / rate_hz
     try:
@@ -164,10 +204,10 @@ def stream(server, fs, rate_hz):
                     raise ConnectionError("server closed")
                 payload += chunk
             anti = np.frombuffer(payload, dtype="<f4").copy()
-            rms = float(np.sqrt(np.mean(ref.astype(np.float64) ** 2)))
-            db = 20 * np.log10(rms + 1e-9)
             if sample_index % (2048 * 5) == 0:
-                print(f"mic rms {rms:.4f} ({db:.1f} dBFS) -> anti max {np.max(np.abs(anti)):.3f} {'[SILENT]' if rms < 0.005 else ''}")
+                rms_ref = float(np.sqrt(np.mean(ref.astype(np.float64) ** 2)))
+                rms_err = float(np.sqrt(np.mean(err.astype(np.float64) ** 2)))
+                print(f"ref {rms_ref:.3f} err {rms_err:.3f} -> anti max {np.max(np.abs(anti)):.3f}")
             play_anti(anti, fs=fs)
             sample_index += len(ref)
             sleep = interval - (time.time() - start)
@@ -180,9 +220,10 @@ def stream(server, fs, rate_hz):
                 _aplay.stdin.close()
             except Exception:
                 pass
-        if _rec_stream:
-            _rec_stream.stop()
-            _rec_stream.close()
+        if _rec_ref:
+            _rec_ref.stop(); _rec_ref.close()
+        if _rec_err and _rec_err is not _rec_ref:
+            _rec_err.stop(); _rec_err.close()
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
