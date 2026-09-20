@@ -17,6 +17,8 @@ ALSA_CHANNELS = 2
 
 # persistent aplay — no per-chunk restart gaps/static
 _aplay = None
+_prev_tail = None
+FADE = 240  # 5 ms at 48kHz crossfade between 50ms chunks
 
 def get_aplay():
     global _aplay
@@ -38,18 +40,24 @@ def fake_sensor(L=2048, M=3):
 
 
 def play_anti(anti, fs=4000, gain=2.5):
+    global _prev_tail
     anti = np.asarray(anti, dtype=np.float32) * float(gain)
     anti = np.clip(anti, -0.99, 0.99)
     if fs != ALSA_RATE:
         anti = resample_poly(anti, ALSA_RATE, fs).astype(np.float32)
     anti = anti.reshape(-1, 1)
     anti = np.repeat(anti, ALSA_CHANNELS, axis=1)
+    # crossfade with previous tail to remove clicks
+    if _prev_tail is not None and len(anti) >= FADE:
+        fade_out = np.linspace(1, 0, FADE)[:, None]
+        fade_in = np.linspace(0, 1, FADE)[:, None]
+        anti[:FADE] = _prev_tail[-FADE:] * fade_out + anti[:FADE] * fade_in
+    _prev_tail = anti.copy()
     data = anti.astype("<f4").tobytes()
     try:
         get_aplay().stdin.write(data)
         get_aplay().stdin.flush()
     except BrokenPipeError:
-        # aplay died, restart
         global _aplay
         _aplay = None
         get_aplay().stdin.write(data)
