@@ -59,7 +59,7 @@ schedule();
 
 // Spotlight: pointer position goes straight to CSS variables (no layout work, no framework state).
 document.addEventListener('pointermove', (e) => {
-  const t = e.target instanceof Element ? e.target.closest('.panel, .metric, .glass-card') : null;
+  const t = e.target instanceof Element ? e.target.closest('.panel, .metric, .glass-card, .price-card') : null;
   if (!t) return;
   const r = t.getBoundingClientRect();
   t.style.setProperty('--mx', `${e.clientX - r.left}px`);
