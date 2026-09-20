@@ -1,0 +1,62 @@
+experiment: single_tone_gru_v2
+fs: 4000
+L_in: 2048
+H: 200
+sim:
+  n_tones: 1
+  duration_s: 6.0
+  freq_range:
+  - 45
+  - 300
+  amp_range:
+  - 0.15
+  - 0.45
+  snr_db_range:
+  - 20
+  - 35
+  drift_range:
+  - 0.0
+  - 0.0
+  transformer_hum_prob: 0.0
+  mild_nonlinear: false
+  use_harmonics: false
+  broadband_noise_std: 0.005
+  ref_noise_std: 0.005
+  err_noise_std: 0.005
+  processing_delay_ms: 2.0
+  secondary_delay_ms_range:
+  - 8
+  - 18
+  secondary_atten_range:
+  - 0.5
+  - 0.8
+dataset:
+  train_scenes: 400
+  val_scenes: 80
+  test_scenes: 80
+  windows_per_scene: 8
+  train_seed: 0
+  val_seed: 1
+  test_seed: 2
+training:
+  seed: 42
+  num_workers: 0
+  batch_size: 64
+  epochs: 25
+  lr: 0.001
+  weight_decay: 0.0001
+  optimizer: adamw
+  scheduler: plateau
+  grad_clip: 1.0
+  use_amp: true
+model:
+  name: model_b_gru
+  hidden: 64
+loss:
+  w_td: 1.0
+  w_stft: 0.3
+  w_residual: 1.0
+  w_energy: 0.005
+  w_clip: 0.3
+  w_smooth: 0.001
+  s_max: 1.0
