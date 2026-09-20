@@ -12,9 +12,16 @@ def fake_sensor(L=2048, M=3):
     speaker = np.zeros(L+len(ir)-1, dtype=np.float32)
     return ref, err, speaker, ir
 
-def play_anti(anti, fs=4000, device=4):
+def play_anti(anti, fs=4000, device=None):
     try:
         import sounddevice as sd
+        if device is None:
+            # auto-find UACDemo/USB, fallback to Headphones
+            for i,d in enumerate(sd.query_devices()):
+                if 'UAC' in d['name'] or 'USB' in d['name']:
+                    device=i; break
+            else:
+                device=None
         sd.play(anti, samplerate=fs, blocking=True, device=device)
     except Exception as e:
         # fallback: write raw to ALSA pipe (Pi with aplay)
@@ -68,7 +75,7 @@ if __name__ == '__main__':
     ap = argparse.ArgumentParser()
     ap.add_argument('--server', default='192.168.10.1:5000')
     ap.add_argument('--fs', type=int, default=4000)
-    ap.add_argument('--device', type=int, default=4, help='ALSA device index for USB DAC (plughw:4,0)')
+    ap.add_argument('--device', type=int, default=None, help='PortAudio index (auto-detects UACDemo); use "aplay -l" card for fallback')
     ap.add_argument('--rate-hz', type=float, default=20)
     args = ap.parse_args()
     stream(args.server, args.fs, args.rate_hz)
