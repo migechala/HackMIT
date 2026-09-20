@@ -81,7 +81,7 @@ function start(next) {
   const el = buildBanner();
   el.classList.remove('ok');
   el.querySelector('strong').textContent = 'Noise alarm';
-  el.querySelector('.alarm-msg').textContent = `${info.facility || 'The facility'} is at ${Number(info.level).toFixed(1)} dBA, above its ${info.limit} dBA limit.`;
+  el.querySelector('.alarm-msg').textContent = info.message || `${info.facility || 'The facility'} is at ${Number(info.level).toFixed(1)} dBA, above its ${info.limit} dBA limit.`;
   const btn = el.querySelector('.alarm-btn');
   btn.textContent = 'Silence'; btn.disabled = false;
   const c = ensureCtx();
