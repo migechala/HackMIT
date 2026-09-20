@@ -2,6 +2,7 @@
 """Pi raw TCP client — send + receive anti-noise, direct cable/Wi-Fi."""
 import argparse, time, socket, struct
 import numpy as np
+import sounddevice as sd
 from threshold_ml.ingest.raw_protocol import pack_frame
 
 def fake_sensor(L=2048, M=3):
@@ -13,25 +14,13 @@ def fake_sensor(L=2048, M=3):
     return ref, err, speaker, ir
 
 def play_anti(anti, fs=4000, device=None):
-    try:
-        import sounddevice as sd
-        if device is None:
-            # auto-find UACDemo/USB, fallback to Headphones
-            for i,d in enumerate(sd.query_devices()):
-                if 'UAC' in d['name'] or 'USB' in d['name']:
-                    device=i; break
-            else:
-                device=None
-        sd.play(anti, samplerate=fs, blocking=True, device=device)
-    except Exception as e:
-        # fallback: write raw to ALSA pipe (Pi with aplay)
-        try:
-            import subprocess, tempfile
-            with tempfile.NamedTemporaryFile(suffix='.raw') as f:
-                anti.astype('<f4').tofile(f.name)
-                subprocess.run(['aplay', '-f', 'FLOAT_LE', '-r', str(fs), '-c', '1', f.name], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        except Exception:
-            print(f'play failed: {e}')
+    if device is None:
+        for i,d in enumerate(sd.query_devices()):
+            if 'UAC' in d['name'] or 'USB' in d['name']:
+                device=i; break
+        else:
+            device=None
+    sd.play(anti, samplerate=fs, blocking=True, device=device)
 
 def stream(server, fs, rate_hz):
     host, port = server.rsplit(':',1)
