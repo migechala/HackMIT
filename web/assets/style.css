@@ -188,3 +188,14 @@
 @media(prefers-reduced-motion:no-preference){.vx-mic.live{animation:vxpulse 1.4s ease-in-out infinite}@keyframes vxpulse{50%{box-shadow:0 0 0 8px rgba(192,57,43,.18)}}}
 @media(prefers-reduced-transparency:reduce){#vx-panel{background:#f6f7ef;-webkit-backdrop-filter:none;backdrop-filter:none}}
 @media(max-width:600px){#vx-fab{right:14px;bottom:14px}#vx-panel{right:16px;bottom:74px}}
+
+/* Single Business plan: one wide card */
+.pricing-grid.solo{grid-template-columns:1fr;max-width:980px;margin-left:auto;margin-right:auto}
+@media(min-width:851px){
+  .pricing-grid.solo .price-card{display:grid;grid-template-columns:1fr 1fr;column-gap:64px;align-content:start;padding:48px 52px}
+  .pricing-grid.solo .price-card>*{grid-column:1}
+  .pricing-grid.solo .price-card>ul{grid-column:2;grid-row:1 / span 5;align-self:center;margin:0;padding:0;border-top:0;gap:18px}
+  .pricing-grid.solo .price-card>.btn{grid-row:6;justify-self:start;min-width:260px;margin-top:28px}
+  .pricing-grid.solo .price-card .price{font-size:56px;margin:30px 0 10px}
+}
+.pricing-grid.solo{max-width:none;margin-left:0;margin-right:0}
