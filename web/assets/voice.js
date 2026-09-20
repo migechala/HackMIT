@@ -124,7 +124,7 @@ function answer(raw) {
 
 /* ---------------- UI ---------------- */
 let enabled = false, statusChecked = false, muted = false, busy = false, open = false;
-let ws = null, rec = null, stream = null, audio = null, maxTimer = null;
+let ws = null, rec = null, stream = null, audio = null, maxTimer = null, recorded = null;
 let finalText = '', interim = '';
 let panel, fab, log, input, micBtn, statusEl, muteBtn;
 
@@ -169,7 +169,7 @@ function build() {
   panel.addEventListener('click', (e) => {
     const k = e.target.closest('[data-vx]')?.dataset.vx;
     if (k === 'close') toggle(false);
-    if (k === 'mic') (ws ? stopListening(true) : startListening());
+    if (k === 'mic') ((ws || recorded) ? stopListening(true) : startListening());
     if (k === 'mute') { muted = !muted; muteBtn.setAttribute('aria-pressed', String(muted)); muteBtn.innerHTML = muted ? '&#128263;' : '&#128266;'; if (muted && audio) audio.pause(); }
   });
   $('form', panel).addEventListener('submit', (e) => { e.preventDefault(); const v = input.value.trim(); if (v) { input.value = ''; ask(v); } });
@@ -260,7 +260,12 @@ async function startListening() {
   try {
     if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') throw new Error('unsupported');
     const tr = await fetch('/api/voice-token', { method: 'POST' });
-    if (!tr.ok) throw new Error('token');
+    if (!tr.ok) {
+      // Streaming needs a key that may create tokens. Without it, record, detect the pause, and transcribe the clip.
+      const err = await tr.json().catch(() => ({}));
+      if (/rejected the API key/.test(err.error || '')) throw new Error('key');
+      return await startRecorded();
+    }
     const { access_token: token } = await tr.json();
     stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
     try { ws = await connect(token, false); } catch { ws = await connect(token, true); }
@@ -280,8 +285,57 @@ async function startListening() {
     maxTimer = setTimeout(() => stopListening(true), 20000);
   } catch (e) {
     cleanup();
-    setStatus(e.message === 'unsupported' ? 'This browser cannot record audio.' : e.name === 'NotAllowedError' ? 'Microphone permission was denied.' : 'Could not start voice. Check the Deepgram key and try again.');
+    setStatus(e.message === 'key' ? 'Deepgram rejected the API key. Check DEEPGRAM_API_KEY in .env.' : e.message === 'unsupported' ? 'This browser cannot record audio.' : e.name === 'NotAllowedError' ? 'Microphone permission was denied.' : 'Could not start voice. Check the Deepgram key and try again.');
   } finally { busy = false; }
+}
+
+/* Fallback: record until the speaker pauses, then send the clip to /api/transcribe. */
+async function startRecorded() {
+  stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+  const chunks = [];
+  rec = new MediaRecorder(stream);
+  rec.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
+  const ac = new (window.AudioContext || window.webkitAudioContext)();
+  const an = ac.createAnalyser();
+  an.fftSize = 1024;
+  ac.createMediaStreamSource(stream).connect(an);
+  const buf = new Uint8Array(an.fftSize);
+  let heard = false, quietSince = 0, submit = true, floor = null;
+  const t0 = Date.now();
+  const iv = setInterval(() => {
+    an.getByteTimeDomainData(buf);
+    let sum = 0;
+    for (const x of buf) { const d = (x - 128) / 128; sum += d * d; }
+    const rms = Math.sqrt(sum / buf.length), now = Date.now();
+    // adapt to the room: the first 0.4 s sets the noise floor; speech must clearly exceed it
+    if (now - t0 < 400) { floor = Math.max(floor || 0, rms); return; }
+    const loud = rms > Math.max(0.02, Math.min(floor || 0, 0.03) * 3); // cap: speech in the first 0.4 s must not raise the bar
+    if (loud) { heard = true; quietSince = 0; }
+    else if (heard) { quietSince = quietSince || now; if (now - quietSince > 1300) done(true); }
+    else if (now - t0 > 8000) done(true);
+    if (now - t0 > 20000) done(true);
+  }, 100);
+  function done(s) { submit = s; clearInterval(iv); if (rec && rec.state !== 'inactive') rec.stop(); }
+  rec.onstop = async () => {
+    clearInterval(iv);
+    ac.close().catch(() => {});
+    stream && stream.getTracks().forEach((t) => t.stop());
+    const type = rec?.mimeType || 'audio/webm';
+    rec = null; stream = null; recorded = null;
+    micBtn.classList.remove('live');
+    micBtn.setAttribute('aria-label', 'Start listening');
+    if (!submit || !heard) { setStatus(submit ? 'I did not hear anything. Try again or type.' : 'Tap the mic to speak, or type.'); return; }
+    setStatus('Transcribing…');
+    try {
+      const r = await fetch('/api/transcribe', { method: 'POST', headers: { 'content-type': type }, body: new Blob(chunks, { type }) });
+      if (!r.ok) throw new Error('transcribe');
+      const { transcript } = await r.json();
+      if (transcript) ask(transcript); else setStatus('I did not catch that. Try again or type.');
+    } catch { setStatus('Could not transcribe that. Check the Deepgram key and try again.'); }
+  };
+  recorded = { finish: done };
+  rec.start();
+  setStatus('Listening… pause when you are done.');
 }
 
 function cleanup() {
@@ -295,6 +349,7 @@ function cleanup() {
 }
 
 function stopListening(submit) {
+  if (recorded) { recorded.finish(submit); return; }
   if (!ws && !stream) return;
   const said = `${finalText} ${interim}`.trim();
   cleanup();

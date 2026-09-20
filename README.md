@@ -279,7 +279,9 @@ node server/serve.mjs       # http://localhost:4200
 
 Without a key (or when the site is served by another static host such as `npx serve web`), the assistant still works by typing; the mic and spoken replies are disabled with an explanation.
 
-**Tested:** all question types against the data files, navigation intents, the server (static files, range requests, path traversal, missing key, cross-origin refusal), and that the proxy really calls Deepgram (a fake key is rejected by Deepgram with 401/400). **Not yet tested with a real key:** live microphone streaming and audio playback, since they need a valid key and a microphone.
+**Two speech-to-text paths.** If the key may create temporary tokens (a Member or higher key), the mic streams live to Deepgram Nova-3 over a WebSocket. If it may not (for example a key created with narrower permissions, which Deepgram answers with 403 on `/v1/auth/grant`), the app automatically records until you pause (with a noise-adaptive silence check), and `POST /api/transcribe` sends the clip to Deepgram. The fallback works with any key that can call the API; text-to-speech works with either.
+
+**Tested (real Deepgram key):** the key validates; text-to-speech returns audio; a synthesized spoken question ("Which site has the most still air?") fed through a fake microphone was transcribed by Deepgram, answered from the data, and spoken back (`/api/transcribe` 200, `/api/speak` 200). Also tested: all question types, navigation intents, the server (static files, range requests, path traversal, missing key, invalid key message, cross-origin refusal). **Not tested:** the live streaming path (this key cannot create tokens, so it always used the fallback), a real human microphone in a noisy room, and Safari/Firefox recording formats. With a looping fake microphone the pause detector once let a clip run about 10 seconds (two repeats) and could not be reproduced in later runs; tapping the mic stops recording at any time.
 
 ## What we added on top of frontend-2.0
 

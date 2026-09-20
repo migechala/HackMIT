@@ -7,6 +7,7 @@
 //   GET  /api/voice-status  -> { enabled }
 //   POST /api/voice-token   -> short-lived Deepgram token for live speech-to-text (60 s, WebSocket handshake only)
 //   POST /api/speak         -> proxies Deepgram text-to-speech, returns audio
+//   POST /api/transcribe    -> proxies a recorded clip to Deepgram speech-to-text (works with any key that can use the API)
 // No dependencies (Node 18+).
 
 import { createServer } from 'node:http';
@@ -48,6 +49,20 @@ function sameOrigin(req) {
   const origin = req.headers.origin;
   if (!origin) return true; // same-origin GET/POST from our own pages may omit it
   try { return new URL(origin).host === req.headers.host; } catch { return false; }
+}
+
+function readBuffer(req, limit) {
+  return new Promise((resolveBody, reject) => {
+    let size = 0;
+    const chunks = [];
+    req.on('data', (c) => {
+      size += c.length;
+      if (size > limit) { reject(new Error('too large')); req.destroy(); return; }
+      chunks.push(c);
+    });
+    req.on('end', () => resolveBody(Buffer.concat(chunks)));
+    req.on('error', reject);
+  });
 }
 
 function readBody(req, limit = 4096) {
@@ -98,6 +113,21 @@ async function handleApi(req, res, path) {
     res.writeHead(200, { 'content-type': r.headers.get('content-type') || 'audio/mpeg', 'cache-control': 'no-store' });
     res.end(Buffer.from(await r.arrayBuffer()));
     return;
+  }
+  if (path === '/api/transcribe' && req.method === 'POST') {
+    let audioBuf;
+    try { audioBuf = await readBuffer(req, 6 * 1024 * 1024); } catch { return json(res, 413, { error: 'clip too large' }); }
+    if (!audioBuf.length) return json(res, 400, { error: 'no audio' });
+    const q = new URLSearchParams({ model: 'nova-3', language: 'en-US', smart_format: 'true' });
+    for (const k of ['THRESHOLD', 'Manassas', 'Crosby', 'Scranton', 'Ypsilanti', 'Washtenaw', 'dBA', 'PUDL', 'NOAA']) q.append('keyterm', k);
+    const r = await fetch(`https://api.deepgram.com/v1/listen?${q}`, {
+      method: 'POST',
+      headers: { Authorization: `Token ${KEY}`, 'content-type': req.headers['content-type'] || 'audio/webm' },
+      body: audioBuf,
+    });
+    if (!r.ok) return json(res, 502, { error: badKey(r.status) || `Deepgram transcription failed (${r.status})` });
+    const d = await r.json();
+    return json(res, 200, { transcript: d.results?.channels?.[0]?.alternatives?.[0]?.transcript || '' });
   }
   return json(res, 404, { error: 'not found' });
 }
