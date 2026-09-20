@@ -1,0 +1,44 @@
+# Train Model B on real WAV (sound_train.wav, 48k stereo) -> resampled to 4000 Hz
+# Stereo mapping: ch0 = reference mic, ch1 = error mic (disturbance when muted)
+# Split is CONTIGUOUS in time with guard gap; no leakage across train/val/test.
+experiment: wav_tcn
+fs: 4000
+L_in: 2048
+H: 200
+sim:  # only used for secondary IR synthesis when wav has no measured IR
+  secondary_delay_ms_range: [8, 18]
+  secondary_atten_range: [0.5, 0.8]
+dataset:
+  type: wav
+  wav_path: ../sound_train.wav  # resolved relative to threshold-ml/ and repo root; also accepts absolute path
+  # alt relative: sound_train.wav or ../sound_train.wav — absolute is resolved first
+  windows_per_scene: 64   # 64 windows per split -> 64 train, 64 val, 64 test
+  split_ratios: [0.7, 0.15, 0.15]  # contiguous time: 66s train / 14s val / 14s test
+  ref_channel: 0
+  err_channel: 1
+  seed: 42
+  # secondary_ir: null  # null -> synthesize stable IR; or provide [0,0,0.6]
+training:
+  seed: 42
+  num_workers: 0
+  batch_size: 32
+  epochs: 25
+  lr: 0.001
+  weight_decay: 0.0001
+  optimizer: adamw
+  scheduler: plateau
+  grad_clip: 1.0
+  use_amp: false  # cpu/mps
+model:
+  name: model_b_tcn
+  hidden: 64
+  levels: 4
+  kernel_size: 7
+loss:
+  w_td: 1.0
+  w_stft: 0.3
+  w_residual: 1.0
+  w_energy: 0.005
+  w_clip: 0.3
+  w_smooth: 0.001
+  s_max: 1.0

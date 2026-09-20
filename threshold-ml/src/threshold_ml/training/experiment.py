@@ -29,6 +29,24 @@ def make_model(cfg):
 
 def make_dataset(cfg, split, stats=None):
     d = cfg['dataset']
+    kind = d.get('type', 'synthetic')  # synthetic | real | wav
+    if kind == 'wav':
+        from ..datasets.wav import WavDataset
+        # wav_path may be absolute or relative to repo root; dataset config can override
+        wav_path = d.get('wav_path', 'sound_train.wav')
+        # allow per-dataset windows override
+        wps = d.get('windows_per_scene', 64)
+        return WavDataset(wav_path=wav_path, fs=cfg['fs'], L_in=cfg['L_in'], H=cfg['H'],
+                          windows_per_scene=wps, split=split, mean_std=stats,
+                          split_ratios=tuple(d.get('split_ratios', [0.7, 0.15, 0.15])),
+                          ref_channel=d.get('ref_channel', 0), err_channel=d.get('err_channel', 1),
+                          secondary_ir=d.get('secondary_ir'), seed=d.get('seed', 42))
+    if kind == 'real':
+        from ..datasets.real import RealRecordingDataset
+        return RealRecordingDataset(root=d.get('root', 'data/real'), L_in=cfg['L_in'], H=cfg['H'],
+                                    windows_per_scene=d.get('windows_per_scene', 8),
+                                    split=split, mean_std=stats, max_scenes=d.get('max_scenes'))
+    # synthetic (default)
     seeds = [d[f'{s}_seed'] for s in ('train', 'val', 'test')]
     if len(set(seeds)) != 3:
         raise ValueError('Use distinct scene split seeds')
