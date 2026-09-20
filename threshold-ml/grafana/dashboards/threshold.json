@@ -1,9 +1,304 @@
 {
-  "title": "THRESHOLD — dB Minimized & Nature Freed",
+  "uid": "threshold-anc",
+  "title": "THRESHOLD — Quiet, quantified.",
+  "description": "Cancellation performance, remaining noise, energy + operating cost, and jurisdiction-aware threshold alerting (facility location × local day/night rules → sustained exceedance → operator notification).",
+  "tags": ["threshold", "anc", "noise", "sustainability"],
+  "schemaVersion": 38,
+  "version": 1,
+  "timezone": "browser",
+  "refresh": "5s",
+  "time": { "from": "now-30m", "to": "now" },
+  "weekStart": "monday",
+  "templating": {
+    "list": [
+      {
+        "name": "facility",
+        "label": "Facility (location determines jurisdiction)",
+        "type": "custom",
+        "hide": 0,
+        "current": { "text": "All", "value": "$__all" },
+        "options": [
+          { "text": "All", "value": "$__all", "selected": true },
+          { "text": "Manassas VA — Prince William County", "value": "dc-manassas-01" },
+          { "text": "Crosby ND — Divide County", "value": "dc-divide-02" },
+          { "text": "Scranton PA — PennFuture Model", "value": "dc-scranton-03" },
+          { "text": "Ypsilanti MI — Washtenaw County", "value": "dc-ypsi-04" }
+        ],
+        "query": "Manassas VA : dc-manassas-01 , Crosby ND : dc-divide-02 , Scranton PA : dc-scranton-03 , Ypsilanti MI : dc-ypsi-04",
+        "includeAll": true,
+        "multi": false
+      }
+    ]
+  },
   "panels": [
-    {"type": "timeseries", "title": "Attenuation dB (higher = quieter)", "targets": [{"expr": "threshold_attenuation_db{method=\"ml\"}"}, {"expr": "threshold_attenuation_db{method=\"sinusoid\"}"}, {"expr": "threshold_attenuation_db{method=\"perfect_forecast\"}"}]},
-    {"type": "stat", "title": "Nature Freed (m²) — radius 2.5m/dB", "targets": [{"expr": "3.14159 * (2.5 * threshold_attenuation_db{method=\"ml\"})^2"}]},
-    {"type": "barchart", "title": "Amplification Count (windows louder)", "targets": [{"expr": "threshold_amplification_count"}]},
-    {"type": "stat", "title": "Half-hour Data (frames)", "targets": [{"expr": "threshold_real_frames"}]}
+    {
+      "id": 1,
+      "type": "row",
+      "title": "01 — Cancellation performance (what the ANC achieved)",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "collapsed": false
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Attenuation dB — higher = quieter (ML vs sinusoid vs perfect forecast)",
+      "description": "d + h * bounded_command, never d minus forecast. Negative = amplification. Per-facility when facility selected.",
+      "gridPos": { "h": 8, "w": 14, "x": 0, "y": 1 },
+      "fieldConfig": { "defaults": { "unit": "dB", "min": 0 }, "overrides": [] },
+      "options": { "legend": { "displayMode": "visible" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "Prometheus" }, "expr": "threshold_attenuation_db{method=\"ml\", facility=~\"$facility\"}", "refId": "A", "legendFormat": "ML — {{facility}}" },
+        { "datasource": { "type": "prometheus", "uid": "Prometheus" }, "expr": "threshold_attenuation_db{method=\"sinusoid\", facility=~\"$facility\"}", "refId": "B", "legendFormat": "sinusoid — {{facility}}" },
+        { "datasource": { "type": "prometheus", "uid": "Prometheus" }, "expr": "threshold_attenuation_db{method=\"perfect_forecast\", facility=~\"$facility\"}", "refId": "C", "legendFormat": "perfect forecast (bounded) — {{facility}}" },
+        { "datasource": { "type": "prometheus", "uid": "Prometheus" }, "expr": "threshold_attenuation_db{method=\"ml\"}", "refId": "D", "legendFormat": "ML (global)", "hide": true }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Current attenuation (ML)",
+      "description": "Measured against captured ANC-off baseline",
+      "gridPos": { "h": 4, "w": 5, "x": 14, "y": 1 },
+      "fieldConfig": { "defaults": { "unit": "dB", "thresholds": { "steps": [{ "color": "red", "value": 0 }, { "color": "yellow", "value": 5 }, { "color": "green", "value": 10 }] } }, "overrides": [] },
+      "options": { "colorMode": "background", "graphMode": "area" },
+      "targets": [{ "datasource": { "type": "prometheus", "uid": "Prometheus" }, "expr": "threshold_attenuation_db{method=\"ml\", facility=~\"$facility\"}", "refId": "A" }]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Nature Freed — radius 2.5 m/dB",
+      "description": "π × (2.5 × dB)² — illustrative restored area per dB",
+      "gridPos": { "h": 4, "w": 5, "x": 19, "y": 1 },
+      "fieldConfig": { "defaults": { "unit": "areaM2" } , "overrides": [] },
+      "targets": [{ "datasource": { "type": "prometheus", "uid": "Prometheus" }, "expr": "3.14159 * (2.5 * threshold_attenuation_db{method=\"ml\", facility=~\"$facility\"})^2", "refId": "A" }]
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "ANC status + Dominant tone",
+      "description": "ANC active flag and target frequency from reference mic",
+      "gridPos": { "h": 4, "w": 5, "x": 14, "y": 5 },
+      "fieldConfig": { "defaults": { "thresholds": { "steps": [{ "color": "red", "value": 0 }, { "color": "green", "value": 1 }] } }, "overrides": [] },
+      "options": { "colorMode": "background" },
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "Prometheus" }, "expr": "threshold_anc_active{facility=~\"$facility\"}", "refId": "A", "legendFormat": "ANC active" },
+        { "datasource": { "type": "prometheus", "uid": "Prometheus" }, "expr": "threshold_dominant_frequency_hz{facility=~\"$facility\"}", "refId": "B", "legendFormat": "freq Hz" }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "barchart",
+      "title": "Amplification count (windows louder than baseline)",
+      "gridPos": { "h": 4, "w": 5, "x": 19, "y": 5 },
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "targets": [{ "datasource": { "type": "prometheus", "uid": "Prometheus" }, "expr": "threshold_amplification_count{method=\"ml\"}", "refId": "A" }]
+    },
+    {
+      "id": 7,
+      "type": "row",
+      "title": "02 — Remaining noise (residual vs threshold)",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 9 },
+      "collapsed": false
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "Residual noise vs Baseline vs Applicable threshold (dBA)",
+      "description": "Residual is what remains after cancellation. Baseline is ANC-off. Threshold switches with facility-local day/night.",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 10 },
+      "fieldConfig": { "defaults": { "unit": "dB" }, "overrides": [] },
+      "options": { "legend": { "displayMode": "visible" } },
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "Prometheus" }, "expr": "threshold_residual_db{facility=~\"$facility\"}", "refId": "A", "legendFormat": "residual — {{facility}}" },
+        { "datasource": { "type": "prometheus", "uid": "Prometheus" }, "expr": "threshold_baseline_db{facility=~\"$facility\"}", "refId": "B", "legendFormat": "baseline — {{facility}}" },
+        { "datasource": { "type": "prometheus", "uid": "Prometheus" }, "expr": "threshold_applicable_threshold_db{facility=~\"$facility\"}", "refId": "C", "legendFormat": "applicable limit — {{facility}} ({{jurisdiction}} {{period}})" }
+      ]
+    },
+    {
+      "id": 9,
+      "type": "gauge",
+      "title": "Noise margin — residual minus applicable limit",
+      "description": ">0 = above limit. Re-arms 1 dB below limit (web app).",
+      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 10 },
+      "fieldConfig": { "defaults": { "unit": "dB", "min": -10, "max": 10, "thresholds": { "steps": [{ "color": "green", "value": -10 }, { "color": "yellow", "value": -1 }, { "color": "red", "value": 0 }] } }, "overrides": [] },
+      "options": { "showThresholdMarkers": true },
+      "targets": [{ "datasource": { "type": "prometheus", "uid": "Prometheus" }, "expr": "threshold_noise_margin_db{facility=~\"$facility\"}", "refId": "A" }]
+    },
+    {
+      "id": 10,
+      "type": "stat",
+      "title": "Residual now (dBA) — threshold status",
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 10 },
+      "fieldConfig": { "defaults": { "unit": "dB", "thresholds": { "steps": [{ "color": "green", "value": 0 }, { "color": "red", "value": 0 }] } }, "overrides": [] },
+      "options": { "colorMode": "background" },
+      "targets": [{ "datasource": { "type": "prometheus", "uid": "Prometheus" }, "expr": "threshold_residual_db{facility=~\"$facility\"}", "refId": "A" }]
+    },
+    {
+      "id": 11,
+      "type": "stat",
+      "title": "Applicable threshold now (day/night, facility-local)",
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 14 },
+      "fieldConfig": { "defaults": { "unit": "dB" }, "overrides": [] },
+      "targets": [{ "datasource": { "type": "prometheus", "uid": "Prometheus" }, "expr": "threshold_applicable_threshold_db{facility=~\"$facility\"}", "refId": "A", "legendFormat": "{{facility}} {{period}}: {{jurisdiction}}" }]
+    },
+    {
+      "id": 12,
+      "type": "row",
+      "title": "03 — Energy & operating cost of mitigation (mitigation electricity only)",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 18 },
+      "collapsed": false
+    },
+    {
+      "id": 13,
+      "type": "timeseries",
+      "title": "System power — mitigation node only (W)",
+      "description": "INA219 / controller telemetry. Not facility savings.",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 19 },
+      "fieldConfig": { "defaults": { "unit": "watt" }, "overrides": [] },
+      "targets": [{ "datasource": { "type": "prometheus", "uid": "Prometheus" }, "expr": "threshold_system_power_watts{facility=~\"$facility\"}", "refId": "A", "legendFormat": "{{facility}} — {{state}} @ ${{tariff}}" }]
+    },
+    {
+      "id": 14,
+      "type": "stat",
+      "title": "Energy used today (Wh)",
+      "gridPos": { "h": 4, "w": 3, "x": 12, "y": 19 },
+      "fieldConfig": { "defaults": { "unit": "watth" }, "overrides": [] },
+      "targets": [{ "datasource": { "type": "prometheus", "uid": "Prometheus" }, "expr": "threshold_energy_wh_total{facility=~\"$facility\"}", "refId": "A" }]
+    },
+    {
+      "id": 15,
+      "type": "stat",
+      "title": "Operating cost — $/hour",
+      "description": "power × tariff (state industrial avg, EIA-861 via PUDL)",
+      "gridPos": { "h": 4, "w": 3, "x": 15, "y": 19 },
+      "fieldConfig": { "defaults": { "unit": "currencyUSD" }, "overrides": [] },
+      "targets": [{ "datasource": { "type": "prometheus", "uid": "Prometheus" }, "expr": "threshold_operating_cost_usd_per_hour{facility=~\"$facility\"}", "refId": "A" }]
+    },
+    {
+      "id": 16,
+      "type": "stat",
+      "title": "Projected daily cost (24h @ current draw)",
+      "gridPos": { "h": 4, "w": 3, "x": 18, "y": 19 },
+      "fieldConfig": { "defaults": { "unit": "currencyUSD" }, "overrides": [] },
+      "targets": [{ "datasource": { "type": "prometheus", "uid": "Prometheus" }, "expr": "threshold_operating_cost_usd_per_day{facility=~\"$facility\"}", "refId": "A" }]
+    },
+    {
+      "id": 17,
+      "type": "stat",
+      "title": "Projected monthly cost (30d)",
+      "gridPos": { "h": 4, "w": 3, "x": 21, "y": 19 },
+      "fieldConfig": { "defaults": { "unit": "currencyUSD" }, "overrides": [] },
+      "targets": [{ "datasource": { "type": "prometheus", "uid": "Prometheus" }, "expr": "threshold_operating_cost_usd_per_month{facility=~\"$facility\"}", "refId": "A" }]
+    },
+    {
+      "id": 18,
+      "type": "stat",
+      "title": "W per dB reduced (prototype comparison)",
+      "description": "Not an efficiency rating — meaningful only for matching measurement setups",
+      "gridPos": { "h": 4, "w": 3, "x": 12, "y": 23 },
+      "fieldConfig": { "defaults": { "unit": "watt" }, "overrides": [] },
+      "targets": [{ "datasource": { "type": "prometheus", "uid": "Prometheus" }, "expr": "threshold_power_per_db_w_per_db{facility=~\"$facility\"}", "refId": "A" }]
+    },
+    {
+      "id": 19,
+      "type": "stat",
+      "title": "Cost per dB-hour ($ / dB·h)",
+      "gridPos": { "h": 4, "w": 3, "x": 15, "y": 23 },
+      "fieldConfig": { "defaults": { "unit": "currencyUSD" }, "overrides": [] },
+      "targets": [{ "datasource": { "type": "prometheus", "uid": "Prometheus" }, "expr": "threshold_cost_per_db_hour_usd{facility=~\"$facility\"}", "refId": "A" }]
+    },
+    {
+      "id": 20,
+      "type": "stat",
+      "title": "Tariff — state industrial avg",
+      "description": "EIA-861 via PUDL. VA 9.0¢ ND 7.3¢ PA 7.9¢ MI 8.3¢ (2024). Editable in web app.",
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 23 },
+      "fieldConfig": { "defaults": { "unit": "currencyUSD" }, "overrides": [] },
+      "targets": [{ "datasource": { "type": "prometheus", "uid": "Prometheus" }, "expr": "threshold_tariff_usd_per_kwh{facility=~\"$facility\"}", "refId": "A", "legendFormat": "{{state}}" }]
+    },
+    {
+      "id": 21,
+      "type": "row",
+      "title": "04 — Alerting: jurisdiction-aware threshold + sustained exceedance → operator notification",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 27 },
+      "collapsed": false
+    },
+    {
+      "id": 22,
+      "type": "text",
+      "title": "How alerting works",
+      "gridPos": { "h": 4, "w": 24, "x": 0, "y": 28 },
+      "options": {
+        "mode": "markdown",
+        "content": "Facility location → jurisdiction profile (PWC VA 60/55 dB, Divide ND 65/50 dB, PennFuture PA 58/48 dB, Washtenaw MI 62/53 dB) → day/night schedule evaluated in **facility-local time** (not viewer time) → applicable limit = `threshold_applicable_threshold_db`. Alert level = limit − margin (default **2 dB** early warning). Reading must stay above alert level for **30 s** (`for: 30s` in `prometheus_rules.yml`) — brief spikes don't alert. One incident creates at most one notification; re-arms 1 dB below threshold. Grafana shows `threshold_alert_pending` and `ThresholdSustainedExceedance` firing state; Prometheus Alertmanager routes to the responsible operator (SMS/webhook in production; local siren+banner in the web demo). Rules live at `threshold-ml/prometheus_rules.yml`; thresholds per facility at `threshold_threshold_limit_db{period=\"day|night\",applicable=\"0|1\"}`."
+      }
+    },
+    {
+      "id": 23,
+      "type": "timeseries",
+      "title": "Threshold limits by facility — day vs night (step) + alert level",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 32 },
+      "fieldConfig": { "defaults": { "unit": "dB" }, "overrides": [] },
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "Prometheus" }, "expr": "threshold_threshold_limit_db{facility=~\"$facility\", period=\"day\"}", "refId": "A", "legendFormat": "day limit — {{facility}} ({{jurisdiction}})" },
+        { "datasource": { "type": "prometheus", "uid": "Prometheus" }, "expr": "threshold_threshold_limit_db{facility=~\"$facility\", period=\"night\"}", "refId": "B", "legendFormat": "night limit — {{facility}}" },
+        { "datasource": { "type": "prometheus", "uid": "Prometheus" }, "expr": "threshold_alert_level_db{facility=~\"$facility\"}", "refId": "C", "legendFormat": "alert level (limit−margin) — {{facility}}" }
+      ]
+    },
+    {
+      "id": 24,
+      "type": "timeseries",
+      "title": "Sustained exceedance — instantaneous state (0/1) + alert pending",
+      "description": "0=below, 1=above. Prometheus 'for: 30s' makes this sustained before firing. See Alert list below.",
+      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 32 },
+      "fieldConfig": { "defaults": { "min": 0, "max": 1 }, "overrides": [] },
+      "options": { "legend": { "displayMode": "visible" } },
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "Prometheus" }, "expr": "threshold_exceedance_state{facility=~\"$facility\"}", "refId": "A", "legendFormat": "exceedance (residual > limit) — {{facility}}" },
+        { "datasource": { "type": "prometheus", "uid": "Prometheus" }, "expr": "threshold_alert_pending{facility=~\"$facility\"}", "refId": "B", "legendFormat": "alert pending (residual > alert level) — {{facility}}" }
+      ]
+    },
+    {
+      "id": 25,
+      "type": "stat",
+      "title": "Facility — jurisdiction & local clock",
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 32 },
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "targets": [{ "datasource": { "type": "prometheus", "uid": "Prometheus" }, "expr": "threshold_facility_local_hour{facility=~\"$facility\"}", "refId": "A", "legendFormat": "local hour" }]
+    },
+    {
+      "id": 26,
+      "type": "stat",
+      "title": "Current applicable period",
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 36 },
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "targets": [{ "datasource": { "type": "prometheus", "uid": "Prometheus" }, "expr": "threshold_applicable_threshold_db{facility=~\"$facility\"}", "refId": "A", "legendFormat": "{{period}} — {{jurisdiction}}" }]
+    },
+    {
+      "id": 27,
+      "type": "alertlist",
+      "title": "Firing alerts — notify responsible operator (sustained exceedance)",
+      "description": "Backed by prometheus_rules.yml: ThresholdSustainedExceedance (for 30s) + ThresholdAlertLevelExceeded. Wire to Alertmanager SMS/webhook for production.",
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 40 },
+      "options": { "alertInstanceLabelFilter": "", "dashboardAlerts": false, "groupBy": [], "maxItems": 10, "sortOrder": 1, "stateFilter": { "firing": true, "pending": true, "noData": false, "normal": false, "error": false } }
+    },
+    {
+      "id": 28,
+      "type": "table",
+      "title": "Threshold config per facility (day / night limits, jurisdiction)",
+      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 40 },
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "targets": [{ "datasource": { "type": "prometheus", "uid": "Prometheus" }, "expr": "threshold_threshold_limit_db", "refId": "A", "format": "table", "instant": true }]
+    },
+    {
+      "id": 29,
+      "type": "text",
+      "title": "What the numbers don't claim",
+      "gridPos": { "h": 3, "w": 24, "x": 0, "y": 46 },
+      "options": {
+        "mode": "markdown",
+        "content": "Metrics are per controlled acoustic zone (enclosure/duct mic), not a community boundary measurement. Thresholds are illustrative profiles derived from county/model ordinances — verify applicable law for deployment. Costs are mitigation electricity only; no facility-savings claim. W/dB and $/dB·h are prototype comparisons, meaningful only for matching measurement setups. Illustrative candidate sites and generation-mix are not parcel/utility assessments."
+      }
+    }
   ]
 }

@@ -1,0 +1,37 @@
+groups:
+  - name: threshold-noise-thresholds
+    interval: 10s
+    rules:
+      # Sustained exceedance — residual above the facility's locally-applicable day/night limit.
+      # The exporter emits instantaneous exceedance (0/1) in the facility's local time;
+      # Prometheus `for:` enforces "sustained" and the alert notifies the operator.
+      - alert: ThresholdSustainedExceedance
+        expr: threshold_exceedance_state == 1
+        for: 30s
+        labels:
+          severity: warning
+          component: noise-compliance
+        annotations:
+          summary: "{{ $labels.facility }} ({{ $labels.jurisdiction }}) above {{ $labels.period | default \"applicable\" }} limit"
+          description: "Residual {{ $value | printf \"%.1f\" }} dBA has stayed above the jurisdiction threshold for 30s. Facility-local day/night rules apply (see threshold_threshold_limit_db). Notify responsible operator; incident deduplicates until 1 dB recovery (web app) / alert resolves."
+
+      # Early warning — residual above alert level (limit - margin), before legal limit
+      - alert: ThresholdAlertLevelExceeded
+        expr: threshold_alert_pending == 1
+        for: 30s
+        labels:
+          severity: info
+          component: noise-early-warning
+        annotations:
+          summary: "{{ $labels.facility }} approaching limit (alert level exceeded)"
+          description: "Residual above alert level (limit minus {{ $labels.alert_margin_db }} dB) for 30s. Operator heads-up before breach."
+
+      # Optional: mitigation power anomaly (node drawing far above expected)
+      - alert: MitigationPowerHigh
+        expr: threshold_system_power_watts > 12
+        for: 1m
+        labels:
+          severity: info
+        annotations:
+          summary: "{{ $labels.facility }} mitigation power high: {{ $value | printf \"%.1f\" }} W"
+          description: "Energy cost and W/dB will rise; check fan/amp. Cost metrics: threshold_operating_cost_usd_per_hour"
