@@ -1,0 +1,24 @@
+services:
+  rack42:
+    build: .
+    image: threshold-ml:gx10
+    ports: ["5000:5000"]
+    volumes:
+      - ./data/rack42:/app/data/real
+      - ./artifacts/rack42:/app/artifacts
+      - ./data/secondary_ir.npz:/app/data/secondary_ir.npz:ro
+    devices:
+      - /dev/snd
+    command: python scripts/ingest_raw_server.py --bind 0.0.0.0:5000 --out data/real --config configs/drift.yaml --checkpoint artifacts/checkpoints/drift2_h128/drift2_h128_best.pt
+  rack43:
+    extends: rack42
+    ports: ["5001:5000"]
+    volumes:
+      - ./data/rack43:/app/data/real
+      - ./artifacts/rack43:/app/artifacts
+      - ./data/secondary_ir.npz:/app/data/secondary_ir.npz:ro
+  # per-rack auto-retrain (every 30 min) — optional sidecar
+  # retrain-rack42:
+  #   image: threshold-ml:gx10
+  #   volumes: *rack42-volumes
+  #   command: python scripts/auto_retrain_halfhour.py
