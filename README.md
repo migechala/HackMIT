@@ -255,11 +255,31 @@ The primary site: Laura's **frontend-2.0** (a standalone, no-build website with 
 ## Run
 
 ```bash
-npx serve web          # then open the printed URL (the hero video needs http, not file://)
+node server/serve.mjs   # serves web/ and enables the voice assistant (see below)
+# or, without voice:  npx serve web   (the hero video needs http, not file://)
 # or:  cd web && python -m http.server 8765
 ```
 
 No build step and no Python needed to run it. The site works from a plain file open too, except the hero video streaming.
+
+## Voice: Ask THRESHOLD (Deepgram)
+
+A floating "Ask THRESHOLD" assistant on the logged-in pages. Speak or type a question ("which site has the most still air?", "what is the price in Scranton?", "is Scranton within its threshold?", "open the weather page for Crosby") and it answers in text and, with Deepgram, out loud.
+
+- **Speech to text:** Deepgram live streaming (Nova-3) over a WebSocket, with key terms for the facility names. **Text to speech:** Deepgram Aura-2 via `POST /v1/speak`.
+- **Answers come from the app's own data** (NOAA weather, PUDL/EIA prices and grid mix, facility and noise state) through a rule-based router in `web/assets/voice.js`. There is no language model, so every number is traceable and nothing can be invented; weather answers say they are exposure, not measured noise, and threshold answers say they are not certified.
+- **The API key never reaches the browser.** `server/serve.mjs` (Node, no dependencies) serves `web/` and exposes `/api/voice-status`, `/api/voice-token` (a 60-second Deepgram token used only for the WebSocket handshake) and `/api/speak` (proxies text to speech). Requests from other origins are refused.
+
+Run:
+
+```bash
+cp .env.example .env        # then set DEEPGRAM_API_KEY (get one at https://console.deepgram.com/signup)
+node server/serve.mjs       # http://localhost:4200
+```
+
+Without a key (or when the site is served by another static host such as `npx serve web`), the assistant still works by typing; the mic and spoken replies are disabled with an explanation.
+
+**Tested:** all question types against the data files, navigation intents, the server (static files, range requests, path traversal, missing key, cross-origin refusal), and that the proxy really calls Deepgram (a fake key is rejected by Deepgram with 401/400). **Not yet tested with a real key:** live microphone streaming and audio playback, since they need a valid key and a microphone.
 
 ## What we added on top of frontend-2.0
 
