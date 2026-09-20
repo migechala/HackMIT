@@ -148,3 +148,12 @@
 @media(max-width:850px){.hero{margin-top:-65px;height:100svh;min-height:690px}.hero-stage{height:100%;min-height:690px}}
 /* Blur strip: on public pages start at the very top and fade out (no hard edge under the pill) */
 #header.pill ~ #pblur{top:0;height:96px;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);-webkit-mask-image:linear-gradient(#000 0%,transparent);mask-image:linear-gradient(#000 0%,transparent)}
+
+/* Glass pill nav (backdrop-filter approximation; solid fallback below) */
+.pill-nav{background:rgba(255,255,255,.34);border:1px solid rgba(255,255,255,.62);-webkit-backdrop-filter:blur(22px) saturate(160%);backdrop-filter:blur(22px) saturate(160%);box-shadow:inset 0 1px 0 rgba(255,255,255,.85),inset 0 -1px 0 rgba(255,255,255,.25),0 12px 34px -14px rgba(16,42,29,.35)}
+.pill-nav .navlinks a{color:#31432f}
+.pill-nav .navlinks a.active,.pill-nav .navlinks a:hover{background:rgba(255,255,255,.5);color:var(--forest)}
+.pill-brand{color:var(--forest)}
+@media(prefers-reduced-transparency:reduce){.pill-nav{background:#f6f7ef;-webkit-backdrop-filter:none;backdrop-filter:none}}
+.pill-nav{background:rgba(255,255,255,.62);-webkit-backdrop-filter:blur(24px) saturate(170%);backdrop-filter:blur(24px) saturate(170%)}
+.pill-nav .navlinks a{color:#1f3325}
