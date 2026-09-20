@@ -1,17 +1,17 @@
 @import 'tailwindcss';
 
 :root {
-  --bg: #060a12;
-  --bg-elev: #0b1220;
-  --bg-elev-2: #0f1830;
-  --border: #1c2942;
-  --text: #cdd6e8;
-  --text-dim: #7e8bab;
-  --text-h: #f3f6fc;
-  --accent: #35e8c4;
-  --accent-2: #4f8dff;
-  --warn: #f5b94a;
-  --danger: #ff5d6c;
+  --bg: #f7f5ee;
+  --bg-elev: #ffffff;
+  --bg-elev-2: #f1ede0;
+  --border: #e6e0cf;
+  --text: #45413a;
+  --text-dim: #78725f;
+  --text-h: #201d17;
+  --accent: #3f9d6f;
+  --accent-2: #5b8fc9;
+  --warn: #d79a3c;
+  --danger: #d9636d;
 }
 
 * {
@@ -39,12 +39,45 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #1c2942;
+  background: #ddd6c1;
   border-radius: 6px;
 }
 
 .mono {
   font-family: ui-monospace, 'SF Mono', Consolas, monospace;
+}
+
+input[type='range'] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--border);
+}
+input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: var(--accent);
+  border: 2px solid #ffffff;
+  box-shadow: 0 1px 2px rgba(32, 29, 23, 0.25);
+  cursor: pointer;
+}
+input[type='range']::-moz-range-track {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--border);
+}
+input[type='range']::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: var(--accent);
+  border: 2px solid #ffffff;
+  box-shadow: 0 1px 2px rgba(32, 29, 23, 0.25);
+  cursor: pointer;
 }
 
 @keyframes float-slow {
@@ -61,6 +94,15 @@ body {
 }
 .animate-pulse-glow {
   animation: pulse-glow 2.4s ease-in-out infinite;
+}
+
+@keyframes sway {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(2deg); }
+}
+.animate-sway {
+  animation: sway 4.5s ease-in-out infinite;
+  transform-origin: bottom center;
 }
 
 @keyframes drift {

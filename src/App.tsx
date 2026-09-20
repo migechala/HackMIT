@@ -5,8 +5,7 @@ import Login from './pages/Login'
 import DatacenterList from './pages/DatacenterList'
 import DatacenterDetail from './pages/detail/DatacenterDetail'
 import Overview from './pages/detail/Overview'
-import Financial from './pages/detail/Financial'
-import Compliance from './pages/detail/Compliance'
+import FinancialImpact from './pages/detail/FinancialImpact'
 import SiteIntelligence from './pages/detail/SiteIntelligence'
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -40,8 +39,8 @@ export default function App() {
           >
             <Route index element={<Navigate to="overview" replace />} />
             <Route path="overview" element={<Overview />} />
-            <Route path="financial" element={<Financial />} />
-            <Route path="compliance" element={<Compliance />} />
+            <Route path="financial" element={<FinancialImpact />} />
+            <Route path="compliance" element={<Navigate to="../financial" replace />} />
             <Route path="site-intelligence" element={<SiteIntelligence />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />

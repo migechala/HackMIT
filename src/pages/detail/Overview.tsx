@@ -3,7 +3,9 @@ import { useOutletContext, Link } from 'react-router-dom'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceDot } from 'recharts'
 import type { DetailContext } from './DatacenterDetail'
 import { generateSpectrum, generatePowerHistory } from '../../lib/mockData'
-import { Card, CardTitle, StatusCard, Toggle, StatRow, Badge } from '../../components/ui'
+import { Card, CardTitle, StatusCard, Toggle, StatRow, Badge, CHART } from '../../components/ui'
+
+const tooltipStyle = { background: CHART.tooltipBg, border: `1px solid ${CHART.tooltipBorder}`, borderRadius: 8, fontSize: 12 }
 
 export default function Overview() {
   const { dc, metrics, setAncActive } = useOutletContext<DetailContext>()
@@ -57,13 +59,13 @@ export default function Overview() {
         <div className="h-[340px] w-full">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={spectrum} margin={{ top: 8, right: 16, left: -12, bottom: 0 }}>
-              <CartesianGrid stroke="#1c2942" strokeDasharray="3 3" />
-              <XAxis dataKey="freq" stroke="#7e8bab" tick={{ fontSize: 11 }} label={{ value: 'Frequency (Hz)', position: 'insideBottom', offset: -2, fill: '#7e8bab', fontSize: 11 }} />
-              <YAxis stroke="#7e8bab" tick={{ fontSize: 11 }} label={{ value: 'dB', angle: -90, position: 'insideLeft', fill: '#7e8bab', fontSize: 11 }} domain={[0, 70]} />
-              <Tooltip contentStyle={{ background: '#0b1220', border: '1px solid #1c2942', borderRadius: 8, fontSize: 12 }} labelFormatter={(v) => `${v} Hz`} />
-              <Line type="monotone" dataKey="baseline" name="Baseline (ANC off)" stroke="#7e8bab" strokeWidth={1.5} dot={false} strokeDasharray="4 3" isAnimationActive={false} />
-              <Line type="monotone" dataKey="anc" name="Current (ANC on)" stroke="#35e8c4" strokeWidth={2.5} dot={false} isAnimationActive={false} />
-              <ReferenceDot x={peak.freq} y={peak.baseline} r={5} fill="#f5b94a" stroke="none" />
+              <CartesianGrid stroke={CHART.grid} strokeDasharray="3 3" />
+              <XAxis dataKey="freq" stroke={CHART.axis} tick={{ fontSize: 11 }} label={{ value: 'Frequency (Hz)', position: 'insideBottom', offset: -2, fill: CHART.axis, fontSize: 11 }} />
+              <YAxis stroke={CHART.axis} tick={{ fontSize: 11 }} label={{ value: 'dB', angle: -90, position: 'insideLeft', fill: CHART.axis, fontSize: 11 }} domain={[0, 70]} />
+              <Tooltip contentStyle={tooltipStyle} labelFormatter={(v) => `${v} Hz`} />
+              <Line type="monotone" dataKey="baseline" name="Baseline (ANC off)" stroke={CHART.baseline} strokeWidth={1.5} dot={false} strokeDasharray="4 3" isAnimationActive={false} />
+              <Line type="monotone" dataKey="anc" name="Current (ANC on)" stroke={CHART.accent} strokeWidth={2.5} dot={false} isAnimationActive={false} />
+              <ReferenceDot x={peak.freq} y={peak.baseline} r={5} fill={CHART.warn} stroke="none" />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -123,10 +125,10 @@ export default function Overview() {
             <div className="h-[140px] w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={powerHistory} margin={{ top: 4, right: 8, left: -28, bottom: 0 }}>
-                  <XAxis dataKey="label" stroke="#7e8bab" tick={{ fontSize: 10 }} />
-                  <YAxis stroke="#7e8bab" tick={{ fontSize: 10 }} />
-                  <Tooltip contentStyle={{ background: '#0b1220', border: '1px solid #1c2942', borderRadius: 8, fontSize: 12 }} />
-                  <Line type="monotone" dataKey="watts" stroke="#4f8dff" strokeWidth={2} dot={false} isAnimationActive={false} />
+                  <XAxis dataKey="label" stroke={CHART.axis} tick={{ fontSize: 10 }} />
+                  <YAxis stroke={CHART.axis} tick={{ fontSize: 10 }} />
+                  <Tooltip contentStyle={tooltipStyle} />
+                  <Line type="monotone" dataKey="watts" stroke={CHART.accent2} strokeWidth={2} dot={false} isAnimationActive={false} />
                 </LineChart>
               </ResponsiveContainer>
             </div>

@@ -170,7 +170,7 @@ export default function SiteIntelligence() {
 }
 
 const inputCls =
-  'w-full rounded-lg border border-[color:var(--border)] bg-black/20 px-3 py-2 text-sm text-[color:var(--text-h)] outline-none focus:border-[color:var(--accent)]/50'
+  'w-full rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-elev-2)] px-3 py-2 text-sm text-[color:var(--text-h)] outline-none focus:border-[color:var(--accent)]/50'
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (

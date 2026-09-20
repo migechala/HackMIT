@@ -30,7 +30,7 @@ export default function Login() {
               <input
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full rounded-xl border border-[color:var(--border)] bg-black/20 px-3.5 py-2.5 text-sm text-[color:var(--text-h)] outline-none focus:border-[color:var(--accent)]/50"
+                className="w-full rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-elev-2)] px-3.5 py-2.5 text-sm text-[color:var(--text-h)] outline-none focus:border-[color:var(--accent)]/50"
               />
             </div>
             <div>
@@ -39,7 +39,7 @@ export default function Login() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded-xl border border-[color:var(--border)] bg-black/20 px-3.5 py-2.5 text-sm text-[color:var(--text-h)] outline-none focus:border-[color:var(--accent)]/50"
+                className="w-full rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-elev-2)] px-3.5 py-2.5 text-sm text-[color:var(--text-h)] outline-none focus:border-[color:var(--accent)]/50"
               />
             </div>
             <button

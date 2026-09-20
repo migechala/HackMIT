@@ -1,9 +1,22 @@
 import type { ReactNode } from 'react'
 
+// Shared recharts palette so every chart on the dashboard reads as one system.
+export const CHART = {
+  grid: '#eae4d2',
+  axis: '#a39c86',
+  tooltipBg: '#ffffff',
+  tooltipBorder: '#e6e0cf',
+  baseline: '#b7b09a',
+  accent: '#3f9d6f',
+  accent2: '#5b8fc9',
+  warn: '#d79a3c',
+  danger: '#d9636d',
+}
+
 export function Card({ children, className = '' }: { children: ReactNode; className?: string }) {
   return (
     <div
-      className={`rounded-2xl border border-[color:var(--border)] bg-[color:var(--bg-elev)] p-5 shadow-[0_1px_0_rgba(255,255,255,0.02)_inset] ${className}`}
+      className={`rounded-2xl border border-[color:var(--border)] bg-[color:var(--bg-elev)] p-5 shadow-[0_1px_2px_rgba(32,29,23,0.04),0_10px_28px_-14px_rgba(32,29,23,0.16)] ${className}`}
     >
       {children}
     </div>
@@ -62,7 +75,7 @@ export function Badge({ children, tone = 'default' }: { children: ReactNode; ton
         ? 'bg-[color:var(--warn)]/12 text-[color:var(--warn)] border-[color:var(--warn)]/30'
         : tone === 'bad'
           ? 'bg-[color:var(--danger)]/12 text-[color:var(--danger)] border-[color:var(--danger)]/30'
-          : 'bg-white/5 text-[color:var(--text-dim)] border-[color:var(--border)]'
+          : 'bg-black/[0.03] text-[color:var(--text-dim)] border-[color:var(--border)]'
   return <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${cls}`}>{children}</span>
 }
 
@@ -73,7 +86,7 @@ export function Toggle({ checked, onChange, labelOn = 'On', labelOff = 'Off' }: 
       className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
         checked
           ? 'border-[color:var(--accent)]/40 bg-[color:var(--accent)]/12 text-[color:var(--accent)]'
-          : 'border-[color:var(--border)] bg-white/5 text-[color:var(--text-dim)]'
+          : 'border-[color:var(--border)] bg-black/[0.03] text-[color:var(--text-dim)]'
       }`}
     >
       <span className={`h-2 w-2 rounded-full ${checked ? 'bg-[color:var(--accent)] animate-pulse-glow' : 'bg-[color:var(--text-dim)]'}`} />
