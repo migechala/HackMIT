@@ -8,7 +8,7 @@ from threshold_ml.ingest.raw_protocol import pack_frame
 ALSA_DEVICE = "plughw:4,0"
 ALSA_RATE = 48000
 ALSA_CHANNELS = 2
-MIC_ALSA = "plughw:1,0"  # from arecord -l, adjust if needed
+MIC_ALSA = "plughw:4,0"  # UACDemoV10 capture (same card as plughw:4,0 playback) — check arecord -l
 MIC_RATE = 48000
 
 _aplay = None
