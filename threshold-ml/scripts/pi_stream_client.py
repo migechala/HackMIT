@@ -101,11 +101,21 @@ def play_anti(anti, fs=4000, gain=2.5):
         get_aplay().stdin.write(data)
         get_aplay().stdin.flush()
 
+def check_mic(seconds=1):
+    rec = get_rec()
+    needed = int(MIC_RATE * seconds)
+    buf, _ = rec.read(needed)
+    rms = float(np.sqrt(np.mean(buf.astype(np.float64) ** 2)))
+    db = 20 * np.log10(rms + 1e-9)
+    print(f"mic check dev {MIC_DEVICE} {sd.query_devices(MIC_DEVICE)['name']}: rms {rms:.4f} ({db:.1f} dBFS) — {'OK' if rms > 0.005 else 'WARNING: silent/quiet, check gain/cable'}")
+    return rms
+
 def stream(server, fs, rate_hz):
     host, port = server.rsplit(":", 1)
     s = socket.create_connection((host, int(port)))
     s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
     print(f"connected to {server} mic dev {MIC_DEVICE} -> {sd.query_devices(MIC_DEVICE)['name']}")
+    check_mic()
     sample_index = 0
     interval = 1 / rate_hz
     try:
@@ -128,8 +138,10 @@ def stream(server, fs, rate_hz):
                     raise ConnectionError("server closed")
                 payload += chunk
             anti = np.frombuffer(payload, dtype="<f4").copy()
+            rms = float(np.sqrt(np.mean(ref.astype(np.float64) ** 2)))
+            db = 20 * np.log10(rms + 1e-9)
             if sample_index % (2048 * 5) == 0:
-                print(f"mic rms {np.std(ref):.3f} -> got anti {H} max {np.max(np.abs(anti)):.3f}")
+                print(f"mic rms {rms:.4f} ({db:.1f} dBFS) -> anti max {np.max(np.abs(anti)):.3f} {'[MIC SILENT!]' if rms < 0.005 else ''}")
             play_anti(anti, fs=fs)
             sample_index += len(ref)
             sleep = interval - (time.time() - start)
