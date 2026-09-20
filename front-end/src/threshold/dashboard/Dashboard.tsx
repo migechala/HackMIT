@@ -7,6 +7,7 @@ import DatacenterDetail from './pages/detail/DatacenterDetail';
 import Overview from './pages/detail/Overview';
 import FinancialImpact from './pages/detail/FinancialImpact';
 import SiteIntelligence from './pages/detail/SiteIntelligence';
+import Weather from './pages/detail/Weather';
 import { useTheme } from '../useTheme';
 import './dashboard.css';
 
@@ -44,6 +45,7 @@ export default function Dashboard() {
             <Route path="overview" element={<Overview />} />
             <Route path="financial" element={<FinancialImpact />} />
             <Route path="compliance" element={<Navigate to="../financial" replace />} />
+            <Route path="weather" element={<Weather />} />
             <Route path="site-intelligence" element={<SiteIntelligence />} />
           </Route>
         </Route>

@@ -1,9 +1,10 @@
 import { NavLink, Link } from 'react-router-dom'
-import { Activity, Banknote, Compass, LogOut } from 'lucide-react'
+import { Activity, Banknote, Compass, LogOut, Wind } from 'lucide-react'
 
 const TABS = [
   { to: 'overview', label: 'Overview', icon: Activity },
   { to: 'financial', label: 'Financial Impact', icon: Banknote },
+  { to: 'weather', label: 'Weather Exposure', icon: Wind },
   { to: 'site-intelligence', label: 'Site Intelligence', icon: Compass },
 ]
 

@@ -5,13 +5,17 @@ import type { DetailContext } from './DatacenterDetail'
 import { JURISDICTIONS, applicableThreshold, generatePowerHistory, generateComplianceHistory } from '../../lib/mockData'
 import { Card, CardTitle, StatusCard, StatRow, Badge, CHART } from '../../components/ui'
 import ClockCard from '../../components/ClockCard'
+import GridMix from '../../components/GridMix'
+import { getEnergyContext } from '../../lib/energy'
 
-const ENERGY_PRICE_PER_KWH = 0.14 // $/kWh assumption
 
 const tooltipStyle = { background: CHART.tooltipBg, border: `1px solid ${CHART.tooltipBorder}`, borderRadius: 14, fontSize: 12, boxShadow: '0 12px 30px -14px rgba(16,40,27,0.35)' }
 
 export default function FinancialImpact() {
   const { dc, metrics } = useOutletContext<DetailContext>()
+  // Real state industrial retail price (EIA-861 via PUDL); the old $0.14 is only a fallback.
+  const energy = getEnergyContext(dc!.id)
+  const ENERGY_PRICE_PER_KWH = energy?.pricePerKwh ?? 0.14
   const [range, setRange] = useState<'hour' | 'day' | 'week'>('week')
 
   const powerHistory = useMemo(() => generatePowerHistory(range, metrics.powerW), [range, metrics.powerW])
@@ -41,10 +45,10 @@ export default function FinancialImpact() {
         <h2 className="text-lg font-medium tracking-tight text-[color:var(--text-h)]">Cost of quiet operation</h2>
 
         <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-          <StatusCard label="Current operating cost" value={`$${currentCostPerHour.toFixed(3)}`} unit="/hr" />
+          <StatusCard label="Current operating cost" value={`$${currentCostPerHour.toFixed(4)}`} unit="/hr" />
           <StatusCard label="Estimated daily cost" value={`$${dailyCost.toFixed(2)}`} tone="good" emphasize />
           <StatusCard label="Estimated monthly cost" value={`$${monthlyCost.toFixed(0)}`} />
-          <StatusCard label="Energy price assumption" value={`$${ENERGY_PRICE_PER_KWH.toFixed(2)}`} unit="/kWh" />
+          <StatusCard label={energy ? `${energy.state} industrial price` : 'Energy price assumption'} value={`$${ENERGY_PRICE_PER_KWH.toFixed(3)}`} unit="/kWh" sub={energy ? `EIA average, ${energy.year}` : undefined} />
         </div>
 
         <div className="grid gap-6 lg:grid-cols-2">
@@ -53,8 +57,8 @@ export default function FinancialImpact() {
             <StatRow label="System power draw" value={`${metrics.powerW.toFixed(1)} W`} />
             <StatRow label="Energy used today" value={`${(metrics.energyTodayWh / 1000).toFixed(2)} kWh`} />
             <StatRow label="Noise reduction delivered" value={`${metrics.attenuationDb.toFixed(1)} dB`} />
-            <StatRow label="Cost per decibel-hour reduced" value={`$${costPerDbHour.toFixed(4)}`} />
-            <StatRow label="Energy price assumption" value={`$${ENERGY_PRICE_PER_KWH.toFixed(2)} / kWh (regional industrial avg.)`} />
+            <StatRow label="Cost per decibel-hour reduced" value={`${(costPerDbHour * 100).toFixed(4)} cents`} />
+            <StatRow label={energy ? 'Electricity price' : 'Energy price assumption'} value={energy ? `$${ENERGY_PRICE_PER_KWH.toFixed(3)} / kWh (${energy.state} industrial avg., ${energy.year})` : `$${ENERGY_PRICE_PER_KWH.toFixed(2)} / kWh`} />
             <p className="mt-4 text-xs leading-relaxed text-[color:var(--text-dim)]">
               The ANC enclosure draws a small, near-constant load to cancel a continuous tonal
               source &mdash; unlike passive mitigation (structural enclosures, berms, barrier walls),
@@ -77,6 +81,8 @@ export default function FinancialImpact() {
             </div>
           </Card>
         </div>
+
+        {energy && <GridMix energy={energy} />}
 
         <Card>
           <div className="mb-4 flex items-center justify-between">

@@ -419,3 +419,32 @@ Everything ships procedural, so the page runs with no external files. `src/thres
 - The Site Intelligence brief form is recorded but does not change the sample candidates; only the weights do. Candidate data and dashboard values are illustrative.
 - The dev server's SPA fallback returns HTML for missing files, which the GLB loader treats as a parse failure and falls back (same outcome as a 404 in production).
 - The main JS chunk is ~290 KB, with three.js (~790 KB) split into its own chunk.
+
+
+## Voloridge: real public data (NOAA ISD)
+
+For the Voloridge "Signal in the Noise" challenge, the dashboard's **Weather Exposure** tab is built from real NOAA Integrated Surface Database observations (`s3://noaa-isd-pds`), not mock numbers.
+
+**Pipeline** (`voloridge/isd_pipeline.py`, Python 3.12, standard library only):
+1. Reads the ISD station catalogue (~35k stations) and per-year inventory (~15 MB).
+2. For each of the four dashboard facilities, picks the nearest station that is still reporting *and* has enough hourly observations in every study year (a coverage check, not just "nearest").
+3. Downloads one gzipped fixed-width file per station per year (2019-2024, anonymous HTTPS, cached), parses the mandatory section, drops flagged or missing values, keeps one observation per hour, and converts to local time.
+4. Reduces it to sound-relevant weather statistics (share of still-air nights, night wind rose, mean night wind, hours at 25 C+, monthly still-night share) and writes `front-end/src/threshold/dashboard/lib/isdSummary.json` (about 6 KB), which the web app loads. Wind directions are spread across the sectors they overlap because ISD reports 10-degree steps.
+
+Run it: `uv run --no-project --python 3.12 --with tzdata python voloridge/isd_pipeline.py` (raw downloads go to `voloridge/data/`, which is gitignored).
+
+**What it shows:** the same 120 Hz hum has very different weather exposure by site. At night the air is still (wind under 2 m/s) about 61% of the time in Manassas VA, 46% in Scranton PA, 30% in Ypsilanti MI, and 10% in Crosby ND. The tab also lets you set the direction to the nearest homes and see how often the wind carries sound that way.
+
+**Limits:** ISD has no acoustic data. These are weather *exposure* statistics, not noise measurements or decibel predictions. Wind is measured at the nearest airport station (2 to 10 km away), not at the facility, and the still-air threshold and night hours are stated assumptions.
+
+### PUDL: real electricity prices and grid mix
+
+The Financial Impact tab no longer uses the made-up $0.14/kWh. `voloridge/pudl_pipeline.py` reads the PUDL/EIA tables `core_eia861__yearly_sales`, `out_eia923__yearly_generation_fuel_combined` and `core_eia__entity_plants` (public bucket `s3://pudl.catalyst.coop`, Parquet, about 18 MB total) and writes `front-end/src/threshold/dashboard/lib/pudlSummary.json` (about 6 KB) with each facility's state industrial retail price (2019-2024) and in-state generation mix.
+
+**Data-cleaning fix worth knowing about:** in restructured markets (PA, MI) sales are split into a supplier "energy" row and a wires "delivery" row. Averaging every row double counts megawatt-hours and gives about 4.0 c/kWh for Pennsylvania; the correct all-in price is (revenue of bundled + energy + delivery) / (MWh of bundled + energy) = 7.9 c/kWh. The pipeline prints the naive figure next to the corrected one as a check.
+
+Results (2024 state industrial average): VA 9.0, ND 7.3, PA 7.9, MI 8.3 c/kWh. Carbon-free share of in-state generation (nuclear, hydro, wind, solar): VA 36%, ND 40%, PA 34%, MI 32%.
+
+Run it: `uv run --no-project --python 3.12 --with pyarrow python voloridge/pudl_pipeline.py`.
+
+**Limits:** state averages, not a tariff for any facility. The generation mix is in-state generation, not what a specific utility delivers, so no emissions figure is claimed.

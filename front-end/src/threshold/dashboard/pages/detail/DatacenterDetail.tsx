@@ -40,11 +40,12 @@ export default function DatacenterDetail() {
   const first = user?.name.split(' ')[0] ?? 'there'
 
   // Each tab gets its own headline; Overview keeps the greeting.
-  const tab = pathname.endsWith('/financial') ? 'financial' : pathname.endsWith('/site-intelligence') ? 'site' : 'overview'
-  const heading = { overview: `Welcome back, ${first}`, financial: 'Financial impact', site: 'Site intelligence' }[tab]
+  const tab = pathname.endsWith('/financial') ? 'financial' : pathname.endsWith('/weather') ? 'weather' : pathname.endsWith('/site-intelligence') ? 'site' : 'overview'
+  const heading = { overview: `Welcome back, ${first}`, financial: 'Financial impact', weather: 'Weather exposure', site: 'Site intelligence' }[tab]
   const lead = {
     overview: <>You&rsquo;re previewing analytics for <span className="font-semibold text-[color:var(--text-h)]">{dc.name}</span></>,
     financial: <>Operating cost and threshold compliance for <span className="font-semibold text-[color:var(--text-h)]">{dc.name}</span></>,
+    weather: <>How wind and still air at night change who hears <span className="font-semibold text-[color:var(--text-h)]">{dc.name}</span>, from six years of NOAA observations</>,
     site: <>Preliminary lower-impact location screening, starting from <span className="font-semibold text-[color:var(--text-h)]">{dc.name}</span></>,
   }[tab]
 

@@ -4,6 +4,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import type { DetailContext } from './DatacenterDetail'
 import { generateSpectrum, generatePowerHistory } from '../../lib/mockData'
 import { Card, CardTitle, StatusCard, Toggle, StatRow, Badge, Pill, CHART } from '../../components/ui'
+import { priceFor } from '../../lib/energy'
 
 const tooltipStyle = { background: CHART.tooltipBg, border: `1px solid ${CHART.tooltipBorder}`, borderRadius: 12, fontSize: 12, boxShadow: '0 12px 30px -14px rgba(16,40,27,0.35)' }
 
@@ -124,7 +125,7 @@ export default function Overview() {
           <div>
             <StatRow label="Current power" value={`${metrics.powerW.toFixed(1)} W`} />
             <StatRow label="Energy used today" value={`${(metrics.energyTodayWh / 1000).toFixed(2)} kWh`} />
-            <StatRow label="Est. daily operating cost" value={`$${((metrics.powerW / 1000) * 24 * 0.14).toFixed(2)}`} />
+            <StatRow label="Est. daily operating cost" value={`$${((metrics.powerW / 1000) * 24 * priceFor(dc!.id)).toFixed(2)}`} />
             <StatRow label="Noise-reduction efficiency" value={`${(metrics.attenuationDb / Math.max(metrics.powerW, 0.1)).toFixed(2)} dB/W`} />
           </div>
           <div>
