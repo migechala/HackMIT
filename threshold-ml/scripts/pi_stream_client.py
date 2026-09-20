@@ -16,11 +16,13 @@ def fake_sensor(L=2048, M=3):
 def play_anti(anti, fs=4000, device=None):
     if device is None:
         for i,d in enumerate(sd.query_devices()):
-            if 'UAC' in d['name'] or 'USB' in d['name']:
+            if ('UAC' in d['name'] or 'USB' in d['name']) and int(d['max_output_channels']) > 0:
                 device=i; break
         else:
             device=None
     info = sd.query_devices(device) if device is not None else sd.query_devices(kind='output')
+    if int(info['max_output_channels']) == 0:
+        raise RuntimeError(f"selected device {device} has 0 output channels: {info}")
     dev_fs = int(info['default_samplerate']) or 48000
     # resample 4000 -> device rate (USB DACs reject 4000 Hz)
     if dev_fs != fs:
