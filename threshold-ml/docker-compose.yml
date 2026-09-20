@@ -11,7 +11,12 @@ services:
   grafana:
     image: grafana/grafana
     ports: ["3000:3000"]
-    environment: [GF_SECURITY_ADMIN_PASSWORD=threshold, GF_USERS_ALLOW_SIGN_UP=false]
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=threshold
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SECURITY_ALLOW_EMBEDDING=true
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
     volumes:
       - ./grafana/dashboards:/etc/grafana/provisioning/dashboards
       - ./grafana/provisioning:/etc/grafana/provisioning
