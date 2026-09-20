@@ -351,3 +351,71 @@ The platform would then combine geographic data, public records, environmental i
 If successful, the system could potentially be useful for real-estate developers, entrepreneurs, urban planners, environmental organizations, local governments, architects, researchers, and community organizations.
 
 By making unused urban spaces easier to discover and evaluate, we hope to demonstrate how AI and modern computing infrastructure can help cities make better use of the land and buildings they already have.
+
+---
+
+# THRESHOLD front-end (`front-end/`)
+
+The front-end app now hosts **THRESHOLD**, a cinematic scroll-driven 3D landing page for a data-center noise platform, plus two demo shells. The original placeholder landing page from this repo is preserved at `/civic-asset`.
+
+| Route | What it is |
+|---|---|
+| `/` | Pinned scroll story (rotation → deer entry → disintegration → reassembly → grass/coexistence), then product sections |
+| `/dashboard/*` | Laura's dashboard (from `origin/laura-frontend`): demo login, monitored-facility list, and a 3-tab sidebar view (Overview, Financial Impact, Site Intelligence) |
+| `/site-intelligence` | Demo shell: company inputs, top-3 candidates, live-adjustable disruption-score weights |
+| `/civic-asset` | The pre-existing landing page, unchanged |
+
+## Setup
+
+```bash
+cd front-end
+npm install --legacy-peer-deps   # see note below
+npm run dev                      # http://localhost:3000
+npm run build                    # production build to dist/
+npm run lint                     # tsc --noEmit
+```
+
+`--legacy-peer-deps` is needed because `@react-three/fiber` declares *optional* React Native peers (expo, etc.) that npm otherwise tries to resolve. They are not used on the web.
+
+Stack: React 19 + TypeScript + Vite, Tailwind v4, three.js via React Three Fiber, GSAP ScrollTrigger, React Router.
+
+## How the scroll story works
+
+- `src/threshold/landing/HeroStory.tsx` pins a full-screen stage for four extra screens (the section spans 5 viewport heights) and drives a single number, `story.progress` (0–1), from a GSAP ScrollTrigger with `scrub`. Nothing in the scene has its own timer for story motion: **every visual is a pure function of that number**, so scrolling backward reverses the scene exactly. Verified: progress rail readings match the target at 15/45/70/95% both forward and back.
+- `src/threshold/scene/story.ts` holds the timeline: model yaw (integrated angular-velocity profile, under one full turn in total (about 340°, most of it in the intro), so rotation is 1:1 with scroll and never runs on a clock), deer path and gait distance, camera keyframes, vibration and light-tone envelopes.
+- `pieces.ts` procedurally builds the data center as ~1,000 pieces (racks with server faces and indicator lights, floor tiles and grilles, blue cable trays, cooling pipes, cooling/power cabinets, partial walls). `DataCenter.tsx` renders them as three `InstancedMesh`es. The same pieces are the disintegration fragments: seeded scatter targets, spin and swirl are generated once, and fragments move in the *rotating* frame with an added swirl in the same direction, so they inherit the model's rotation.
+- `ParticleSwirl.tsx` is the dark particle stage: ~120k stippled points (40k on mobile) whose positions are computed analytically in the vertex shader from a per-particle seed and the scroll progress (no simulation state, so it reverses with scroll). Sequence: the building dissolves into dust that arcs up and to the left, then drops into a tilted elliptical orbit around the site (40–56%); the dust orbits (56–62%); most of it falls back into the rebuilt structure (62–80%); about a fifth stays as a faint ring around the grass and animals. **Move the pointer to steer the orbit plane and part the cloud; double-click or double-tap switches the orbit focus between the building and the deer.** Fragment chunks scatter onto the same orbit and shrink toward dust.
+- `Deer.tsx` is an articulated low-poly buck (body, neck, head, ears, antlers, two-segment legs). `Grass.tsx` grows instanced blades in the vertex shader with staggered per-blade delays. `Trees.tsx`, `Critters.tsx` (rabbits, birds fade in) and `Environment.tsx` (ground, faint noise rings) complete the diorama.
+
+## Replacing models with GLB files
+
+Everything ships procedural, so the page runs with no external files. `src/threshold/scene/assets.tsx` exposes `MODEL_URLS` slots (`deer`, `rabbit`, `bird`, `tree`). Put a licensed GLB in `public/models/`, uncomment the URL, and it replaces the procedural version. A missing or invalid file logs one console warning and falls back to the procedural model (tested).
+
+## Accessibility, performance, fallbacks
+
+- `prefers-reduced-motion`: no pin or scrub; a static final-frame canvas renders on demand and the five story beats appear as normal document flow.
+- No WebGL (or a scene crash): an illustration plus the full story text in flow; the rest of the site works.
+- Loading state while the scene chunk/first frame prepares. The 3D code is its own lazily loaded chunk.
+- Mobile (≤820px): 900 grass blades instead of 2,800, fewer trees and animals, no shadow map, capped pixel ratio, camera pulled back and shifted for portrait.
+- The canvas stops rendering when the story scrolls off-screen. No audio. Triggers are reverted on unmount.
+
+## Design system notes
+
+- **Skills used:** `design-taste-frontend` (taste-skill) and Emil Kowalski's `animate` / `review-animations`, installed with `npx skills add` into `.claude/skills`. From them: Geist sans display type (Instrument Serif is a listed AI default), one 28px card radius with pill buttons, a bento grid whose four tiles each have a different surface, real brand SVGs (Simple Icons) in the single marquee, no section numbering or eyebrow labels, and scroll reveals that are transform/opacity only with the strong ease-out `cubic-bezier(0.23, 1, 0.32, 1)`.
+- **Watermelon UI (registry.watermelon.sh):** the story-chapter island (`landing/StoryIsland.tsx`) is adapted from the `scroll-island` component (a progress ring that expands into a chapter list), and the primary button's hover sweep is adapted from `shimmer-button`. At the time of writing the *block* registry files (hero, navigation, footer, bento...) returned 404, so only animated components were usable; most of those are app widgets (finance cards, inbox toolbars) rather than marketing sections.
+- **Skiper UI (skiper-ui.com), attribution:** the free registry items `skiper41` (progressive blur), `skiper58` (text roll) and `skiper28` (perspective scroll text) inspired `ui/ProgressiveBlur.tsx` (fixed blur strip under the nav), `ui/TextRoll.tsx` (letter roll on nav, footer and button labels, rebuilt as CSS and gated to real hover pointers) and the perspective tilt on the sustainability headline (rebuilt with `motion`, without `lenis`, which would fight the pinned scroll). `skiper88`, `skiper104`, `skiper11` and `skiper27` require a Skiper UI Pro license key and were not added. `ui/Spotlight.tsx` (cursor spotlight on tiles) is original.
+- **Deliberate exceptions to the skill:** the required "Scroll to explore" cue (now inside the island) and the clarifying line that contains an em-dash are kept because the brief specifies them verbatim.
+
+## Demo shells
+
+`/site-intelligence` and the dashboard use **simulated, illustrative data** only. Nothing is connected to a sensor or real site. The dashboard is Laura's (`origin/laura-frontend`, `src/threshold/dashboard/`), mounted under `/dashboard/*` (her original `/app/*` routes) with its theme scoped to `.dash-root` so it cannot affect the rest of the site. Sign-in is fake: any credentials log in as the demo operator account; `/dashboard` redirects to `/dashboard/login` when signed out, and the session is in memory only. Her Site Intelligence tab is separate from the standalone `/site-intelligence` page. Its look was restyled to a frosted-glass light theme (cool grey gradient, translucent cards with a 1px light border and inset highlight, a navy icon-rail active tile, a large light greeting, label/value pills above charts, an analog clock in the compliance section); the tokens and glass classes live in `dashboard/dashboard.css` (solid fallback under `prefers-reduced-transparency`), and her decorative `GrassField` is no longer rendered. The earlier dark dashboard is kept, unrouted, in `src/threshold/dashboard-v1/` (it also had a mission/pricing sign-in page). The standalone `/site-intelligence` scores reproduce 87 / 81 / 62 by default and re-rank live as weights change.
+
+## Known limitations
+
+- The `skills` named in the original build brief (`taste-skill`, `emilkowalski/skills`) were not installed in this environment, so the motion/visual tuning was done by hand and checked with headless screenshots. Running the `review-animations` skill on the scroll sequence is still a worthwhile follow-up.
+- Verified in headless Edge with a software renderer (SwiftShader), so real-GPU frame rates were not measured. Shadows use a 2048 map on desktop; check performance on low-end GPUs.
+- The data center is procedural low-poly, not a licensed model. It can't be swapped for a GLB without giving up the fragment effect (the intact building *is* its fragments).
+- Only the desktop and 390px-wide mobile layouts were checked visually; tablet widths were not reviewed individually.
+- The Site Intelligence brief form is recorded but does not change the sample candidates; only the weights do. Candidate data and dashboard values are illustrative.
+- The dev server's SPA fallback returns HTML for missing files, which the GLB loader treats as a parse failure and falls back (same outcome as a 404 in production).
+- The main JS chunk is ~290 KB, with three.js (~790 KB) split into its own chunk.

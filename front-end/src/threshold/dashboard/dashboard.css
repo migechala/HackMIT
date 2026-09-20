@@ -1,0 +1,127 @@
+/* Laura's dashboard theme (from origin/laura-frontend src/index.css), scoped to .dash-root. */
+
+.dash-root {
+  --bg: #d9e2dc;
+  --bg-elev: rgba(255, 255, 255, 0.66);
+  --bg-elev-2: rgba(255, 255, 255, 0.55);
+  --border: rgba(16, 40, 27, 0.1);
+  --text: #3a4a40;
+  --text-dim: #66776c;
+  --text-h: #10241a;
+  --ink: #10281b;
+  --accent: #2f7d55;
+  --accent-2: #2e8fa3;
+  --warn: #b8842f;
+  --danger: #c0555e;
+
+  min-height: 100vh;
+  background:
+    radial-gradient(1000px 600px at 6% 0%, rgba(255, 255, 255, 0.75), transparent 62%),
+    linear-gradient(160deg, #d3ddd6 0%, #e6ece7 48%, #d2dcd5 100%);
+  background-attachment: fixed;
+}
+
+.dash-root > * {
+  position: relative;
+  z-index: 1;
+}
+
+.dash-root .mono {
+  font-family: var(--font-mono);
+}
+
+/* Frosted surfaces. Approximation of a glass material built from backdrop-filter, a 1px light
+   border and an inset highlight; falls back to solid white under prefers-reduced-transparency. */
+.dash-root .glass {
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.78);
+  -webkit-backdrop-filter: blur(22px) saturate(140%);
+  backdrop-filter: blur(22px) saturate(140%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 1px 2px rgba(16, 40, 27, 0.05), 0 22px 46px -24px rgba(16, 40, 27, 0.32);
+}
+.dash-root .glass-strong {
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  backdrop-filter: blur(16px) saturate(140%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 1), 0 1px 2px rgba(16, 40, 27, 0.06), 0 14px 30px -18px rgba(16, 40, 27, 0.3);
+}
+.dash-root .glass-window {
+  background: rgba(255, 255, 255, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  -webkit-backdrop-filter: blur(30px) saturate(130%);
+  backdrop-filter: blur(30px) saturate(130%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85), 0 40px 90px -40px rgba(16, 40, 27, 0.45);
+}
+@media (prefers-reduced-transparency: reduce) {
+  .dash-root .glass,
+  .dash-root .glass-strong,
+  .dash-root .glass-window {
+    background: #f7f9fb;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+.dash-root input[type='range'] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--border);
+}
+.dash-root input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: var(--ink);
+  border: 2px solid #ffffff;
+  box-shadow: 0 1px 2px rgba(32, 29, 23, 0.25);
+  cursor: pointer;
+}
+.dash-root input[type='range']::-moz-range-track {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--border);
+}
+.dash-root input[type='range']::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: var(--ink);
+  border: 2px solid #ffffff;
+  box-shadow: 0 1px 2px rgba(32, 29, 23, 0.25);
+  cursor: pointer;
+}
+
+@keyframes float-slow {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-14px); }
+}
+.animate-float-slow {
+  animation: float-slow 6s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+.animate-pulse-glow {
+  animation: pulse-glow 2.4s ease-in-out infinite;
+}
+
+@keyframes sway {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(2deg); }
+}
+.animate-sway {
+  animation: sway 4.5s ease-in-out infinite;
+  transform-origin: bottom center;
+}
+
+@keyframes drift {
+  0% { transform: translateX(-8%); }
+  100% { transform: translateX(8%); }
+}
