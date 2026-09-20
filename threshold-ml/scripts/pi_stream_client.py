@@ -18,7 +18,7 @@ ALSA_CHANNELS = 2
 # persistent aplay — no per-chunk restart gaps/static
 _aplay = None
 _prev_tail = None
-FADE = 240  # 5 ms at 48kHz crossfade between 50ms chunks
+FADE = 960  # 20 ms at 48kHz crossfade (40% of 50ms chunk) for fan-like smooth
 
 def get_aplay():
     global _aplay
