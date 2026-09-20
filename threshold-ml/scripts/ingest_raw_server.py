@@ -33,6 +33,8 @@ def serve(bind, out, fs, cfg_path, ckpt_path):
     port = int(port)
     api, H = load_api(cfg_path, ckpt_path)
     print(f'loaded {ckpt_path} H={H}')
+    last_mtime = Path(ckpt_path).stat().st_mtime if Path(ckpt_path).exists() else 0
+    last_check = time.time()
     srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     srv.bind((host, port)); srv.listen(1)
@@ -76,6 +78,17 @@ def serve(bind, out, fs, cfg_path, ckpt_path):
             reference = take(hdr['L']); error = take(hdr['L']); speaker = take(hdr['L']+hdr['M']-1); secondary = take(hdr['M'])
             if not all(np.isfinite(a).all() for a in (reference, error, speaker, secondary)):
                 continue
+            # hot-reload new half-hour model without dropping Pi connection (~5s check)
+            if time.time() - last_check > 5:
+                last_check = time.time()
+                try:
+                    mtime = Path(ckpt_path).stat().st_mtime
+                    if mtime > last_mtime:
+                        api, H = load_api(cfg_path, ckpt_path)
+                        last_mtime = mtime
+                        print(f'hot-reloaded {ckpt_path} H={H}')
+                except Exception as e:
+                    print(f'hot-reload failed: {e}')
             # save
             name = scene_path / f'scene_{time.strftime("%H%M%S")}_{count}.npz'
             np.savez_compressed(name, reference=reference, error=error, speaker=speaker, secondary_ir=secondary, sample_index=np.int64(hdr['sample_index']), fs=np.int32(fs))
