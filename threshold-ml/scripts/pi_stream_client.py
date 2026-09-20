@@ -3,12 +3,18 @@
 import argparse
 import socket
 import struct
+import subprocess
 import time
 
 import numpy as np
-import sounddevice as sd
+from scipy.signal import resample_poly
 
 from threshold_ml.ingest.raw_protocol import pack_frame
+
+# Pi's working DAC from `aplay -l`: card 4 UACDemoV10
+ALSA_DEVICE = "plughw:4,0"
+ALSA_RATE = 48000  # USB DACs reject 4000 Hz; resample
+ALSA_CHANNELS = 2  # card 4 reports max_output_channels=2, mono fails with -9998
 
 
 def fake_sensor(L=2048, M=3):
@@ -20,33 +26,24 @@ def fake_sensor(L=2048, M=3):
     return ref, err, speaker, ir
 
 
-def play_anti(anti, fs=4000, device=None):
-    if device is None:
-        found = None
-        for i, d in enumerate(sd.query_devices()):
-            if int(d["max_output_channels"]) > 0 and ("UAC" in d["name"] or "USB" in d["name"]):
-                found = i
-                break
-        device = found
-    info = sd.query_devices(device) if device is not None else sd.query_devices(kind="output")
-    if int(info["max_output_channels"]) == 0:
-        raise RuntimeError(f"selected device {device} has 0 output channels: {info}")
-    dev_fs = int(info["default_samplerate"]) or 48000
-    if dev_fs != fs:
-        from scipy.signal import resample_poly
-
-        anti = resample_poly(anti, dev_fs, fs).astype(np.float32)
-        fs = dev_fs
-    max_ch = int(info["max_output_channels"])
+def play_anti(anti, fs=4000):
+    # resample 4000 -> 48000 (12x) and mono -> stereo
+    if fs != ALSA_RATE:
+        anti = resample_poly(anti.astype(np.float32), ALSA_RATE, fs).astype(np.float32)
     anti = np.asarray(anti, dtype=np.float32).reshape(-1, 1)
-    if max_ch == 2:
+    if ALSA_CHANNELS == 2 and anti.shape[1] == 1:
         anti = np.repeat(anti, 2, axis=1)
-    elif max_ch > 2:
-        anti = np.tile(anti, (1, max_ch))
-    sd.play(anti, samplerate=fs, blocking=True, device=device)
+    # interleave to bytes: FLOAT_LE, 2 channels
+    data = anti.astype("<f4").tobytes()
+    # blocking aplay — same path as `speaker-test -D plughw:4,0` which you confirmed beeps
+    proc = subprocess.Popen(
+        ["aplay", "-D", ALSA_DEVICE, "-f", "FLOAT_LE", "-r", str(ALSA_RATE), "-c", str(ALSA_CHANNELS), "-q"],
+        stdin=subprocess.PIPE,
+    )
+    proc.communicate(data)
 
 
-def stream(server, fs, rate_hz, device):
+def stream(server, fs, rate_hz):
     host, port = server.rsplit(":", 1)
     s = socket.create_connection((host, int(port)))
     s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
@@ -73,9 +70,9 @@ def stream(server, fs, rate_hz, device):
                     raise ConnectionError("server closed")
                 payload += chunk
             anti = np.frombuffer(payload, dtype="<f4").copy()
-            play_anti(anti, fs=fs, device=device)
             if sample_index % (2048 * 20) == 0:
                 print(f"got anti {H} samples, max {np.max(np.abs(anti)):.3f}")
+            play_anti(anti, fs=fs)
             sample_index += len(ref)
             sleep = interval - (time.time() - start)
             if sleep > 0:
@@ -88,7 +85,6 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--server", default="192.168.10.1:5000")
     ap.add_argument("--fs", type=int, default=4000)
-    ap.add_argument("--device", type=int, default=None, help="PortAudio index (auto-detects UACDemo)")
     ap.add_argument("--rate-hz", type=float, default=20)
     args = ap.parse_args()
-    stream(args.server, args.fs, args.rate_hz, args.device)
+    stream(args.server, args.fs, args.rate_hz)
