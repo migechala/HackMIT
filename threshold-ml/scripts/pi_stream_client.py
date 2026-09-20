@@ -26,10 +26,11 @@ def fake_sensor(L=2048, M=3):
     return ref, err, speaker, ir
 
 
-def play_anti(anti, fs=4000):
-    # resample 4000 -> 48000 (12x) and mono -> stereo
+def play_anti(anti, fs=4000, gain=2.5):
+    anti = np.asarray(anti, dtype=np.float32) * float(gain)
+    anti = np.clip(anti, -0.99, 0.99)
     if fs != ALSA_RATE:
-        anti = resample_poly(anti.astype(np.float32), ALSA_RATE, fs).astype(np.float32)
+        anti = resample_poly(anti, ALSA_RATE, fs).astype(np.float32)
     anti = np.asarray(anti, dtype=np.float32).reshape(-1, 1)
     if ALSA_CHANNELS == 2 and anti.shape[1] == 1:
         anti = np.repeat(anti, 2, axis=1)
