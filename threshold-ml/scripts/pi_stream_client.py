@@ -28,11 +28,13 @@ def play_anti(anti, fs=4000, device=None):
         # 4000 -> 48000 is 12x
         anti = resample_poly(anti, dev_fs, fs).astype(np.float32)
         fs = dev_fs
-    # ensure correct channels (mono)
     max_ch = int(info['max_output_channels'])
-    if max_ch >= 1:
-        anti = np.asarray(anti, dtype=np.float32).reshape(-1, 1)
-    sd.play(anti, samplerate=fs, blocking=True, device=device)
+    anti = np.asarray(anti, dtype=np.float32).reshape(-1, 1)
+    if max_ch == 2:
+        anti = np.repeat(anti, 2, axis=1)  # mono -> stereo for HDMI/USB that rejects mono
+    elif max_ch > 2:
+        anti = np.tile(anti, (1, max_ch))
+    sd.play(anti, samplerate=fs, blocking=True, device=device, channels=anti.shape[1])
 
 def stream(server, fs, rate_hz):
     host, port = server.rsplit(':',1)
